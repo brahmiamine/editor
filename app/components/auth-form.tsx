@@ -16,8 +16,13 @@ export default function AuthForm() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [recoveryReady, setRecoveryReady] = useState(false)
+  const [theme, setTheme] = useState('paper')
 
   useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}')
+      if (['paper', 'night', 'sun'].includes(saved.theme)) setTheme(saved.theme)
+    } catch {}
     const requested = new URLSearchParams(location.search).get('mode')
     if (requested && Object.hasOwn(titles, requested)) setMode(requested as Mode)
     const hash = new URLSearchParams(location.hash.slice(1))
@@ -30,7 +35,7 @@ export default function AuthForm() {
         history.replaceState(null, '', `${basePath}/auth/?mode=update`)
       } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
         if (requested === 'update') setRecoveryReady(true)
-        else if (hash.get('type') !== 'recovery') location.replace(`${basePath}/`)
+        else if (hash.get('type') !== 'recovery') location.replace(`${basePath}/notes/`)
       }
     })
     return () => subscription.unsubscribe()
@@ -57,7 +62,7 @@ export default function AuthForm() {
         ? await supabase.auth.updateUser({ password })
         : await supabase.auth.signInWithPassword({ email, password })
       if (result.error) throw result.error
-      if (mode === 'login' || mode === 'update') { location.replace(`${basePath}/`); return }
+      if (mode === 'login' || mode === 'update') { location.replace(`${basePath}/notes/`); return }
       setMessage(mode === 'signup' ? 'Si ce compte existe déjà, connectez-vous ou utilisez un lien magique. Pour un nouveau compte, consultez votre email de confirmation.' : mode === 'magic' ? 'Si votre compte existe, vous recevrez un lien de connexion.' : 'Si votre compte existe, vous recevrez un lien de réinitialisation.')
       setPassword('')
     } catch (err) {
@@ -67,8 +72,8 @@ export default function AuthForm() {
     finally { setBusy(false) }
   }
 
-  return <main className="auth-page"><div className="auth-card">
-    <Link className="auth-brand" href="/">✳ papertrail</Link>
+  return <main className={`auth-page ${theme}`}><div className="auth-card">
+    <Link className="auth-brand" href="/"><span className="mark">✳</span> papertrail</Link>
     <h1>{titles[mode]}</h1><p className="auth-intro">Vos notes, disponibles partout et toujours à vous.</p>
     <form onSubmit={submit}>
       {mode !== 'update' && <input aria-label="Email" type="email" autoComplete="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />}

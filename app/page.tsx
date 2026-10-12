@@ -1,39 +1,35 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { supabase } from './supabase'
-import { copy, type Language } from './lib/i18n'
-import { useSession } from './hooks/use-session'
-import { useNotes } from './hooks/use-notes'
-import { NoteEditor } from './components/note-editor'
-import { NoteSidebar } from './components/note-sidebar'
+import Link from 'next/link'
 
-export default function Home() {
-  const { session, ready } = useSession()
-  const notebook = useNotes(session?.user.id, ready)
-  const [active, setActive] = useState('')
-  const [query, setQuery] = useState('')
-  const [theme, setTheme] = useState('paper')
-  const [lang, setLang] = useState<Language>('fr')
-  const [font, setFont] = useState(18)
-  const [sidebar, setSidebar] = useState(280)
-  const [preferencesReady, setPreferencesReady] = useState(false)
-  const current = notebook.notes.find(note => note.id === active) || notebook.notes[0]
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}')
-      if (['paper', 'night', 'sun'].includes(saved.theme)) setTheme(saved.theme)
-      if (['fr', 'en', 'ar'].includes(saved.lang)) setLang(saved.lang)
-      if (saved.font >= 14 && saved.font <= 48) setFont(saved.font)
-    } catch {}
-    setPreferencesReady(true)
-  }, [])
-  useEffect(() => {
-    if (preferencesReady) try { localStorage.setItem('papertrail-preferences', JSON.stringify({ theme, lang, font })) } catch {}
-    document.documentElement.lang = lang
-  }, [theme, lang, font, preferencesReady])
-  const add = () => { if (notebook.ready) { setActive(notebook.add()); setQuery('') } }
-  return <main className={`app ${theme}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ '--sidebar': sidebar + 'px' } as React.CSSProperties}>
-    <NoteSidebar notes={notebook.notes} active={current?.id} select={setActive} query={query} search={setQuery} add={add} remove={notebook.remove} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={() => { void supabase?.auth.signOut() }} status={notebook.status} retry={notebook.retry} ready={notebook.ready} />
-    <NoteEditor note={current} t={copy[lang]} font={font} setFont={setFont} update={body => { if (current) notebook.update(current.id, body) }} add={add} />
+export default function Landing() {
+  return <main className="landing">
+    <nav className="landing-nav">
+      <span className="mark">✳</span><b>papertrail</b>
+      <Link className="landing-login" href="/auth/">Connexion</Link>
+      <Link className="landing-cta" href="/notes/">Essayer sans compte</Link>
+    </nav>
+    <div className="landing-hero">
+      <div className="landing-copy">
+        <div className="landing-kicker">NOTES · FR / EN / عربي</div>
+        <h1>Des notes qui vous suivent.</h1>
+        <p>Un éditeur calme et sans bordure. Vos notes restent sur l’appareil, puis se synchronisent avec votre compte.</p>
+        <div className="landing-buttons">
+          <Link className="landing-primary" href="/notes/">Nouvelle note</Link>
+          <Link className="landing-secondary" href="/auth/?mode=signup">Créer un compte →</Link>
+        </div>
+        <div className="landing-features"><span>Enregistrement local</span><span>Export .md / .txt</span><span>3 thèmes</span></div>
+      </div>
+      <div className="landing-preview" aria-hidden="true">
+        <div className="preview-side">
+          <div className="preview-brand"><span className="mark">✳</span> papertrail</div>
+          <div className="preview-note selected">Idées de voyage<small>Lisbonne, Porto, Faro…</small></div>
+          <div className="preview-note">Courses<small>Pain, citrons, café</small></div>
+          <div className="preview-note">Réunion lundi<small>Points à aborder</small></div>
+        </div>
+        <div className="preview-page">
+          <div className="preview-crumb">Tout › Idées de voyage</div>
+          <div className="preview-text">Lisbonne en mars. Train de nuit vers Porto, puis la côte jusqu’à Faro<span className="caret" /></div>
+        </div>
+      </div>
+    </div>
   </main>
 }
