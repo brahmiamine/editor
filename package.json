@@ -1,0 +1,24 @@
+{
+  "name": "papertrail-notes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx serve out -l 3000",
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit --incremental false"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.108.0",
+    "next": "16.4.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "^5.7.2"
+  }
+}
