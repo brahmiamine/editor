@@ -5,7 +5,6 @@ import { detectNoteJson, looksLikeMarkdown } from '../lib/markdown'
 import { featureCopy, type copy, type Language } from '../lib/i18n'
 import { FormatToolbar } from './format-toolbar'
 import { RichView } from './rich-view'
-import { NoteTools } from './note-tools'
 type Props = { note?: Note; t: typeof copy.fr; lang: Language; font: number; setFont: (size: number) => void; rich: boolean; setRich: (rich: boolean) => void; update: (body: string) => void; add: () => void; openMenu: () => void; change: (patch: Parameters<typeof changeNote>[2]) => void; userId?: string; focus: boolean; setFocus: (value: boolean) => void; readOnly: boolean }
 
 export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update, add, openMenu, change, userId, focus, setFocus, readOnly }: Props) {
@@ -92,7 +91,7 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
       </div>
     </header>
     {note ? <>
-      {!readonly && !focus && <NoteTools key={note.id} note={note} lang={lang} change={change} update={update} userId={userId} />}
+      {note.conflictOf && <p role="status" className="conflict">{f.conflict}</p>}
       {finding && <div className="find-bar"><input ref={findInput} aria-label={f.find} placeholder={f.find} value={query} onChange={event => { setQuery(event.target.value); setResult(-1) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(event.shiftKey ? -1 : 1) } }} /><span>{matches.length} {f.matches}</span><button onClick={() => findNext(-1)}>{f.previous}</button><button onClick={() => findNext(1)}>{f.next}</button><button onClick={() => setFinding(false)} aria-label={t.close}>×</button></div>}
       {rich && !preview && !readonly && !json && !codeNote && <FormatToolbar t={t} lang={lang} editor={area} tidy={() => update(formatText(text))} />}
       {failure && <p role="alert">{failure}</p>}
