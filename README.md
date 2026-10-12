@@ -8,7 +8,7 @@ Use Node.js 24. Run `npm ci`, copy `.env.example` to `.env.local` and set the Su
 
 ## Checks
 
-`npm test` runs six regression tests using the built-in Node test runner. `npm run build` checks TypeScript and produces `out/`. `npm run typecheck` can be run after the build.
+`npm test` runs regression tests using the built-in Node test runner. `npm run build` checks TypeScript and produces `out/`. `npm run typecheck` can be run after the build.
 
 ## Structure
 
@@ -18,7 +18,9 @@ Use Node.js 24. Run `npm ci`, copy `.env.example` to `.env.local` and set the Su
 - `supabase/schema.sql`: notes table, ownership policies and grants.
 - `tests/`: regression checks.
 
-Guest notes and each account have separate local storage. Signed-in notes load from Supabase and save after 500ms of inactivity. Local pending changes and deletions survive reloads. Failed cloud saves display an error and can be retried.
+Guest notes and each account have separate local storage. On login, all guest notes transfer to the account cache and queue for Supabase. The guest cache is cleared only after the account cache is persisted. Signed-in notes load from Supabase and save after 500ms of inactivity. Local pending changes and deletions survive reloads. Failed cloud saves display an error and can be retried.
+
+New notes focus the borderless editor automatically. The sidebar delete button asks for confirmation. Text size uses a number field. Autoformat normalizes paragraph spacing while preserving fenced code and Markdown hard breaks.
 
 Simultaneous edits of the same note on different devices use the last successful write. This is not collaborative editing; reload to receive changes from another device.
 

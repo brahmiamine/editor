@@ -40,3 +40,23 @@ export function exportNote(note: Note, extension: 'txt' | 'md') {
   return extension === 'txt' ? note.body : note.body
 }
 export function wordCount(body: string) { return body.trim() ? body.trim().split(/\s+/u).length : 0 }
+export function formatText(body: string) {
+  const result: string[] = []
+  let fence = ''
+  for (const line of body.replace(/\r\n?/g, '\n').split('\n')) {
+    const marker = line.match(/^\s{0,3}(\x60{3,}|~{3,})/)
+    if (marker) {
+      if (!fence) fence = marker[1]
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = ''
+      result.push(line)
+    } else if (fence) result.push(line)
+    else if (line.trim()) result.push(line)
+    else if (result.length && result[result.length - 1] !== '') result.push('')
+  }
+  if (result[result.length - 1] === '' && !fence) result.pop()
+  return result.join('\n')
+}
+export function importGuestNotes(account: Notebook, guest: Notebook): Notebook {
+  const imported = guest.notes.filter(note => !account.notes.some(existing => existing.id === note.id) && !account.deleted.includes(note.id))
+  return { ...account, notes: [...imported, ...account.notes], pending: [...new Set([...account.pending, ...imported.map(note => note.id)])] }
+}

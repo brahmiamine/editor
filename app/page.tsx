@@ -23,7 +23,7 @@ export default function Home() {
       const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}')
       if (['paper', 'night', 'sun'].includes(saved.theme)) setTheme(saved.theme)
       if (['fr', 'en', 'ar'].includes(saved.lang)) setLang(saved.lang)
-      if (saved.font >= 14 && saved.font <= 28) setFont(saved.font)
+      if (saved.font >= 14 && saved.font <= 48) setFont(saved.font)
     } catch {}
     setPreferencesReady(true)
   }, [])
@@ -33,7 +33,7 @@ export default function Home() {
   }, [theme, lang, font, preferencesReady])
   const add = () => { if (notebook.ready) { setActive(notebook.add()); setQuery('') } }
   return <main className={`app ${theme}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ '--sidebar': sidebar + 'px' } as React.CSSProperties}>
-    <NoteSidebar notes={notebook.notes} active={current?.id} select={setActive} query={query} search={setQuery} add={add} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={() => { void supabase?.auth.signOut() }} status={notebook.status} retry={notebook.retry} ready={notebook.ready} />
-    <NoteEditor note={current} t={copy[lang]} font={font} setFont={setFont} update={body => { if (current) notebook.update(current.id, body) }} remove={() => { if (current) notebook.remove(current.id) }} add={add} />
+    <NoteSidebar notes={notebook.notes} active={current?.id} select={setActive} query={query} search={setQuery} add={add} remove={notebook.remove} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={() => { void supabase?.auth.signOut() }} status={notebook.status} retry={notebook.retry} ready={notebook.ready} />
+    <NoteEditor note={current} t={copy[lang]} font={font} setFont={setFont} update={body => { if (current) notebook.update(current.id, body) }} add={add} />
   </main>
 }

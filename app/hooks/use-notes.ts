@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, mergeRemote, parseNotebook, type Note, type Notebook } from '../lib/notes'
+import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, importGuestNotes, mergeRemote, parseNotebook, type Note, type Notebook } from '../lib/notes'
 
 export function useNotes(userId: string | undefined, sessionReady: boolean) {
   const [book, setBook] = useState<Notebook>(emptyNotebook)
@@ -17,19 +17,28 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
     let cancelled = false
     setLoadedKey('')
     async function load() {
+      let cached: Notebook | undefined
       try {
-        let next = parseNotebook(localStorage.getItem(key))
-        if (!userId) next = ensureFirstNote(next)
-        setBook(next); setLoadedKey(key)
+        cached = parseNotebook(localStorage.getItem(key))
+        if (userId) {
+          const guest = parseNotebook(localStorage.getItem('papertrail-notes'))
+          cached = importGuestNotes(cached, guest)
+          // Persist the transferred notes before clearing the guest notebook.
+          localStorage.setItem(key, JSON.stringify(cached))
+          localStorage.setItem('papertrail-notes', JSON.stringify(emptyNotebook()))
+        }
         if (userId && supabase) {
           await queue.current
           const { data, error } = await supabase.from('notes').select('*').eq('user_id', userId)
           if (error) throw error
           const remote: Note[] = data.map(row => ({ id: row.id, title: row.title, body: row.body, color: row.color, updated: Date.parse(row.updated_at) }))
-          if (!cancelled) setBook(current => ensureFirstNote(mergeRemote(current, remote)))
+          cached = mergeRemote(cached, remote)
         }
-        if (!cancelled) setStatus(userId ? 'Synchronisé' : 'Enregistré localement')
-      } catch (error) { if (!cancelled) setStatus(`Erreur : ${error instanceof Error ? error.message : 'Chargement impossible'}`) }
+        if (!cancelled) {
+          setBook(ensureFirstNote(cached)); setLoadedKey(key)
+          setStatus(userId ? 'Synchronisé' : 'Enregistré localement')
+        }
+      } catch (error) { if (!cancelled) { if (cached) { setBook(cached); setLoadedKey(key) } setStatus(`Erreur : ${error instanceof Error ? error.message : 'Chargement impossible'}`) } }
     }
     void load()
     return () => { cancelled = true; if (generation.current === version) generation.current++ }

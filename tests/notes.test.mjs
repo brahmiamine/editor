@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, exportNote, mergeRemote, parseNotebook, titleFromBody, wordCount } from '../app/lib/notes.ts'
+import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, exportNote, formatText, importGuestNotes, mergeRemote, parseNotebook, titleFromBody, wordCount } from '../app/lib/notes.ts'
 
 test('titles use the first nonempty line and preserve unicode', () => {
   assert.equal(titleFromBody('\n # Bonjour\nSuite'), 'Bonjour')
@@ -51,4 +51,27 @@ test('exports retain content without duplicating the automatic title', () => {
   assert.equal(exportNote(note, 'md'), note.body)
   assert.equal(wordCount(' \n '), 0)
   assert.equal(wordCount('Bonjour monde\nمرحبا'), 3)
+})
+test('autoformat normalizes paragraph spacing without changing code or Markdown hard breaks', () => {
+  assert.equal(formatText('\n \nBonjour  \r\n\r\n\r\nMonde\n\n'), 'Bonjour  \n\nMonde')
+  const code = '~~~js\n\n\n  const value = 1  \n\n~~~'
+  assert.equal(formatText('\n' + code + '\n\n'), code)
+  assert.equal(formatText('~~~\n\n\n'), '~~~\n\n\n')
+  assert.equal(formatText(formatText('\nA\n\n\nB\n')), 'A\n\nB')
+})
+test('all guest notes become pending cloud writes and repeated imports are idempotent', () => {
+  const guest = { notes: [createNote(), createNote(), createNote()], pending: [], deleted: [] }
+  const accountNote = createNote()
+  const account = { notes: [accountNote], pending: [], deleted: [] }
+  const imported = importGuestNotes(account, guest)
+  assert.equal(imported.notes.length, 4)
+  assert.deepEqual(imported.pending, guest.notes.map(note => note.id))
+  assert.deepEqual(importGuestNotes(imported, guest), imported)
+  assert.deepEqual(parseNotebook(JSON.stringify(imported)), imported)
+})
+test('guest import cannot resurrect an account deletion or overwrite an existing note', () => {
+  const note = createNote()
+  assert.equal(importGuestNotes({ ...emptyNotebook(), deleted: [note.id] }, { ...emptyNotebook(), notes: [note] }).notes.length, 0)
+  const account = { ...emptyNotebook(), notes: [{ ...note, body: 'Account content' }] }
+  assert.deepEqual(importGuestNotes(account, { ...emptyNotebook(), notes: [note] }), account)
 })
