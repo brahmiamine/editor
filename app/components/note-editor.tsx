@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { downloadText, exportNote, formatText, wordCount, type Note, type changeNote } from '../lib/notes'
+import { downloadText, exportNote, formatText, noteTitle, wordCount, type Note, type changeNote } from '../lib/notes'
 import { embedAttachments } from '../lib/attachments'
 import { detectNoteJson, looksLikeMarkdown } from '../lib/markdown'
 import { featureCopy, type copy, type Language } from '../lib/i18n'
@@ -78,7 +78,7 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
   return <section className="editor">
     <header>
       <button className="menu-btn" onClick={openMenu} aria-label={t.menu}>☰</button>
-      <div className="crumb">{t.all} <span>›</span> {note?.body.trim() ? note.title : t.untitled}</div>
+      <div className="crumb">{t.all} <span>›</span> {note?.body.trim() || note?.heading?.trim() ? note.title : t.untitled}</div>
       {(json || markdown || preview) && <span className="detect">{json ? t.json : markdown ? t.markdown : ''}<button onClick={() => setPreview(!preview)}>{preview ? t.edit : t.preview}</button></span>}
       <button className="more-btn" disabled={!note} onClick={() => setMore(!more)} aria-expanded={more} aria-label={t.more}>⋯</button>
       <div className={`actions ${more ? 'open' : ''}`}>
@@ -95,6 +95,7 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
       {finding && <div className="find-bar"><input ref={findInput} aria-label={f.find} placeholder={f.find} value={query} onChange={event => { setQuery(event.target.value); setResult(-1) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(event.shiftKey ? -1 : 1) } }} /><span>{matches.length} {f.matches}</span><button onClick={() => findNext(-1)}>{f.previous}</button><button onClick={() => findNext(1)}>{f.next}</button><button onClick={() => setFinding(false)} aria-label={t.close}>×</button></div>}
       {rich && !preview && !readonly && !json && !codeNote && <FormatToolbar t={t} lang={lang} editor={area} tidy={() => update(formatText(text))} />}
       {failure && <p role="alert">{failure}</p>}
+      <input className="note-title" aria-label={f.title} placeholder={f.titlePlaceholder} value={note.heading ?? ''} maxLength={200} readOnly={readonly} onChange={event => change({ heading: event.target.value, title: noteTitle(event.target.value, note.body) })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); area.current?.focus() } }} />
       <div className="page" key={note.id + ':' + preview + ':' + rich}>
         {preview || readonly ? <RichView markdown={text} editable={false} font={font} label={t.preview} lang={lang} userId={userId} innerRef={area} />
           : rich && !json && !codeNote ? <RichView markdown={text} editable font={font} onChange={update} innerRef={area} label={t.notes} lang={lang} userId={userId} />

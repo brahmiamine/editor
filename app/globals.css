@@ -251,3 +251,5 @@ mark{background:var(--accent);color:var(--ink);border-radius:2px}
 }
 @media(max-width:480px){.landing-login{margin-inline-end:12px}.landing-cta{padding:10px 12px}.preview-side{display:none}}
 .conflict{margin:0 10px 8px;font-size:11px;color:var(--danger)}
+.note-title{width:100%;margin:0 0 6px;padding:0 10px;border:0;outline:0;background:none;color:var(--ink);font-size:1.7em;font-weight:800;letter-spacing:-.03em;line-height:1.25}
+.note-title::placeholder{color:var(--muted);font-weight:700}

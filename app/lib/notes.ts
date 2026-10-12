@@ -1,8 +1,9 @@
 export type NoteVersion = { body: string; at: number }
-export type Note = { id: string; title: string; body: string; updated: number; color: string; created?: number; pinned?: boolean; archived?: boolean; tags?: string[]; trashedAt?: number; history?: NoteVersion[]; revision?: number; conflictOf?: string }
+export type Note = { id: string; title: string; body: string; updated: number; color: string; created?: number; pinned?: boolean; archived?: boolean; tags?: string[]; trashedAt?: number; history?: NoteVersion[]; revision?: number; conflictOf?: string; heading?: string }
 export type Notebook = { notes: Note[]; pending: string[]; deleted: string[] }
 export const colors = ['#e9b949', '#e4876b', '#8ebf9b', '#8da9d1', '#b59ad9']
 export const emptyNotebook = (): Notebook => ({ notes: [], pending: [], deleted: [] })
+export function noteTitle(heading: string | undefined, body: string) { const own = heading?.replace(/\s+/g, ' ').trim(); return own ? Array.from(own).slice(0, 48).join('') : titleFromBody(body) }
 export function titleFromBody(body: string) {
   return Array.from(body.split('\n').map(line => line.replace(/^\s*[#>*-]+\s*/, '').replace(/\*\*/g, '').trim()).find(Boolean) || '').slice(0, 48).join('') || 'Untitled note'
 }
@@ -21,9 +22,9 @@ export function editNote(book: Notebook, id: string, body: string): Notebook {
   const history = note.history || []
   // ponytail: checkpoint once per 30 seconds, retain 50 versions; use a separate revisions table for long-lived history.
   const checkpoint = body === '' || !history.length || Date.now() - history[0].at >= 30000
-  return changeNote(book, id, { body, title: titleFromBody(body), history: checkpoint ? [{ body: note.body, at: Date.now() }, ...history].slice(0, 50) : history })
+  return changeNote(book, id, { body, title: noteTitle(note.heading, body), history: checkpoint ? [{ body: note.body, at: Date.now() }, ...history].slice(0, 50) : history })
 }
-export function changeNote(book: Notebook, id: string, patch: Partial<Pick<Note, 'body' | 'title' | 'history' | 'pinned' | 'archived' | 'tags' | 'trashedAt'>>) {
+export function changeNote(book: Notebook, id: string, patch: Partial<Pick<Note, 'body' | 'title' | 'history' | 'pinned' | 'archived' | 'tags' | 'trashedAt' | 'heading'>>) {
   return { ...book, notes: book.notes.map(note => note.id === id ? { ...note, ...patch, updated: Math.max(Date.now(), note.updated + 1) } : note), pending: [...new Set([...book.pending, id])] }
 }
 export const trashNote = (book: Notebook, id: string) => changeNote(book, id, { trashedAt: Date.now() })
@@ -69,13 +70,15 @@ export function parseNotebook(raw: string | null): Notebook {
     if (note.tags !== undefined && (!Array.isArray(note.tags) || !note.tags.every(tag => typeof tag === 'string' && tag.length <= 40))) throw new Error('Invalid tags')
     if (note.history !== undefined && (!Array.isArray(note.history) || !note.history.every(v => v && typeof v.body === 'string' && Number.isFinite(v.at)))) throw new Error('Invalid history')
     for (const field of ['created', 'trashedAt', 'revision'] as const) if (note[field] !== undefined && (!Number.isFinite(note[field]) || note[field]! < 0)) throw new Error('Invalid date or revision')
+    if (note.heading !== undefined && (typeof note.heading !== 'string' || note.heading.length > 200)) throw new Error('Invalid title')
     for (const field of ['pinned', 'archived'] as const) if (note[field] !== undefined && typeof note[field] !== 'boolean') throw new Error('Invalid flag')
-    return { ...note, id: /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(note.id) ? note.id : crypto.randomUUID(), title: titleFromBody(note.body) }
+    return { ...note, id: /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(note.id) ? note.id : crypto.randomUUID(), title: noteTitle(note.heading, note.body) }
   })
   return { notes, pending: notes.filter((note: Note, i: number) => source.pending.includes(source.notes[i].id)).map((note: Note) => note.id), deleted: source.deleted }
 }
 export function exportNote(note: Note, extension: 'txt' | 'md') {
-  return extension === 'txt' ? note.body : note.body
+  const heading = note.heading?.trim()
+  return heading ? (extension === 'md' ? '# ' : '') + heading + '\n\n' + note.body : note.body
 }
 export function wordCount(body: string) { return body.trim() ? body.trim().split(/\s+/u).length : 0 }
 export function formatText(body: string) {

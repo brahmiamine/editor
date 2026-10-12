@@ -193,3 +193,13 @@ test('a heading can be made bold and the markdown keeps the emphasis', async ({ 
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(/^## \*\*Mon titre\*\*/)
   await expect(page.locator('.note-item strong').first()).toHaveText('Mon titre')
 })
+
+test('a separate title field is kept apart from the body and names the note', async ({ page }) => {
+  await page.goto('notes/')
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Corps de la note')
+  await page.getByRole('textbox', { name: 'Titre', exact: true }).fill('Mon grand titre')
+  await expect(page.locator('.note-item strong').first()).toHaveText('Mon grand titre')
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: 'Titre', exact: true })).toHaveValue('Mon grand titre')
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue('Corps de la note')
+})
