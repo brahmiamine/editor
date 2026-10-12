@@ -8,6 +8,11 @@ export function titleFromBody(body: string) {
 export function createNote(): Note {
   return { id: crypto.randomUUID(), body: '', title: 'Untitled note', updated: Date.now(), color: colors[Math.floor(Math.random() * colors.length)] }
 }
+export function ensureFirstNote(book: Notebook): Notebook {
+  if (book.notes.length || book.deleted.length) return book
+  const note = createNote()
+  return { ...book, notes: [note], pending: [note.id] }
+}
 export function editNote(book: Notebook, id: string, body: string): Notebook {
   if (!book.notes.some(note => note.id === id)) return book
   return { ...book, notes: book.notes.map(note => note.id === id ? { ...note, body, title: titleFromBody(body), updated: Math.max(Date.now(), note.updated + 1) } : note), pending: [...new Set([...book.pending, id])] }

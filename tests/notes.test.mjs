@@ -1,12 +1,21 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNote, deleteNote, editNote, emptyNotebook, exportNote, mergeRemote, parseNotebook, titleFromBody, wordCount } from '../app/lib/notes.ts'
+import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, exportNote, mergeRemote, parseNotebook, titleFromBody, wordCount } from '../app/lib/notes.ts'
 
 test('titles use the first nonempty line and preserve unicode', () => {
   assert.equal(titleFromBody('\n # Bonjour\nSuite'), 'Bonjour')
   assert.equal(titleFromBody('مرحبا بالعالم'), 'مرحبا بالعالم')
   assert.equal(titleFromBody(' '), 'Untitled note')
   assert.equal(Array.from(titleFromBody('🙂'.repeat(60))).length, 48)
+})
+test('first load creates one empty note without duplicating existing notes or pending deletions', () => {
+  const first = ensureFirstNote(emptyNotebook())
+  assert.equal(first.notes.length, 1)
+  assert.equal(first.notes[0].body, '')
+  assert.deepEqual(first.pending, [first.notes[0].id])
+  assert.strictEqual(ensureFirstNote(first), first)
+  const deleted = deleteNote(first, first.notes[0].id)
+  assert.strictEqual(ensureFirstNote(deleted), deleted)
 })
 test('edits address the visible note and queue autosave', () => {
   const note = createNote()

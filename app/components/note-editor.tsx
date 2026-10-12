@@ -15,7 +15,7 @@ export function NoteEditor({ note, t, font, setFont, update, remove, add }: Prop
       <button disabled={!note} onClick={() => download('txt')} aria-label="Export text">↓ .txt</button>
       <button disabled={!note} className="danger" aria-label={t.delete} onClick={remove}>⌫</button>
     </div></header>
-    {note ? <><textarea className="body" aria-label={t.notes} style={{ fontSize: font }} value={note.body} onChange={event => update(event.target.value)} placeholder={t.start} />
+    {note ? <><textarea key={note.id} autoFocus className="body" aria-label={t.notes} style={{ fontSize: font }} value={note.body} onChange={event => update(event.target.value)} placeholder={t.start} />
       <footer><span>{wordCount(note.body)} {t.words} <em>·</em> {Array.from(note.body).length} {t.chars}</span>
         <span><button onClick={() => update('')}>{t.clear}</button><label>A <input aria-label="Text size" type="range" min="14" max="28" value={font} onChange={event => setFont(+event.target.value)} /></label></span>
       </footer></> : <div className="empty editor-empty"><button onClick={add}>{t.newNote}</button></div>}

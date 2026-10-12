@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import { createNote, deleteNote, editNote, emptyNotebook, mergeRemote, parseNotebook, type Note, type Notebook } from '../lib/notes'
+import { createNote, deleteNote, editNote, emptyNotebook, ensureFirstNote, mergeRemote, parseNotebook, type Note, type Notebook } from '../lib/notes'
 
 export function useNotes(userId: string | undefined, sessionReady: boolean) {
   const [book, setBook] = useState<Notebook>(emptyNotebook)
@@ -19,13 +19,14 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
     async function load() {
       try {
         let next = parseNotebook(localStorage.getItem(key))
+        if (!userId) next = ensureFirstNote(next)
         setBook(next); setLoadedKey(key)
         if (userId && supabase) {
           await queue.current
           const { data, error } = await supabase.from('notes').select('*').eq('user_id', userId)
           if (error) throw error
           const remote: Note[] = data.map(row => ({ id: row.id, title: row.title, body: row.body, color: row.color, updated: Date.parse(row.updated_at) }))
-          if (!cancelled) setBook(current => mergeRemote(current, remote))
+          if (!cancelled) setBook(current => ensureFirstNote(mergeRemote(current, remote)))
         }
         if (!cancelled) setStatus(userId ? 'Synchronisé' : 'Enregistré localement')
       } catch (error) { if (!cancelled) setStatus(`Erreur : ${error instanceof Error ? error.message : 'Chargement impossible'}`) }
