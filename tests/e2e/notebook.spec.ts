@@ -181,3 +181,15 @@ test('retry persists the open note after a transient IndexedDB write failure', a
   await page.reload()
   await expect(editor).toHaveValue('À conserver malgré une erreur locale')
 })
+
+test('a heading can be made bold and the markdown keeps the emphasis', async ({ page }) => {
+  await page.goto('notes/')
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('## Mon titre\n\nTexte')
+  await page.getByRole('button', { name: 'Mise en forme', exact: true }).click()
+  await page.locator('.rich h2').click()
+  await page.getByRole('button', { name: 'Titre en gras', exact: true }).click()
+  await expect(page.locator('.rich h2 :is(b, strong)')).toHaveText('Mon titre')
+  await page.getByRole('button', { name: 'Mise en forme', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(/^## \*\*Mon titre\*\*/)
+  await expect(page.locator('.note-item strong').first()).toHaveText('Mon titre')
+})

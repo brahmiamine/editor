@@ -4,7 +4,7 @@ export type Notebook = { notes: Note[]; pending: string[]; deleted: string[] }
 export const colors = ['#e9b949', '#e4876b', '#8ebf9b', '#8da9d1', '#b59ad9']
 export const emptyNotebook = (): Notebook => ({ notes: [], pending: [], deleted: [] })
 export function titleFromBody(body: string) {
-  return Array.from(body.split('\n').map(line => line.replace(/^\s*[#>*-]+\s*/, '').trim()).find(Boolean) || '').slice(0, 48).join('') || 'Untitled note'
+  return Array.from(body.split('\n').map(line => line.replace(/^\s*[#>*-]+\s*/, '').replace(/\*\*/g, '').trim()).find(Boolean) || '').slice(0, 48).join('') || 'Untitled note'
 }
 export function createNote(): Note {
   return { id: crypto.randomUUID(), body: '', title: 'Untitled note', updated: Date.now(), created: Date.now(), color: colors[Math.floor(Math.random() * colors.length)] }

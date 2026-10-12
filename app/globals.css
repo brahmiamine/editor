@@ -130,6 +130,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,[tabindex]:focus-visibl
 .rich>*:first-child{margin-top:0}
 .rich p{margin:0 0 .8em}
 .rich h1,.rich h2,.rich h3,.rich h4{line-height:1.25;letter-spacing:-.03em;margin:1.1em 0 .4em;color:var(--ink)}
+.rich h1,.rich h2,.rich h3,.rich h4{font-weight:500}.rich h1 strong,.rich h2 strong,.rich h3 strong,.rich h4 strong,.rich h1 b,.rich h2 b,.rich h3 b,.rich h4 b{font-weight:800}
 .rich h1{font-size:1.7em}.rich h2{font-size:1.4em}.rich h3{font-size:1.18em}.rich h4{font-size:1em}
 .rich ul,.rich ol{margin:0 0 .8em;padding-inline-start:1.5em}
 .rich blockquote{margin:0 0 .8em;padding-inline-start:12px;border-inline-start:3px solid var(--accent);color:var(--muted)}

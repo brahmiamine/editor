@@ -29,6 +29,29 @@ export function FormatToolbar({ t, lang, editor, tidy }: { t: typeof copy.fr; la
     selection?.removeAllRanges(); selection?.addRange(range)
     if (document.execCommand(command, false, value)) root.dispatchEvent(new Event('input', { bubbles: true }))
   }
+  function boldTitle() {
+    const root = editor.current
+    if (!root) return
+    const range = editorRange(root)
+    root.focus()
+    const selection = window.getSelection()
+    selection?.removeAllRanges(); selection?.addRange(range)
+    const start = range.startContainer
+    let block = (start.nodeType === 1 ? start as Element : start.parentElement)?.closest('h1,h2,h3,h4')
+    if (!block || !root.contains(block)) {
+      document.execCommand('formatBlock', false, '<h2>')
+      const now = window.getSelection()?.anchorNode
+      block = (now?.nodeType === 1 ? now as Element : now?.parentElement)?.closest('h1,h2,h3,h4') ?? null
+    }
+    if (!block || !root.contains(block)) return
+    const whole = document.createRange()
+    whole.selectNodeContents(block)
+    selection?.removeAllRanges(); selection?.addRange(whole)
+    const bolded = !!block.querySelector('strong,b') && block.textContent === Array.from(block.querySelectorAll('strong,b')).map(node => node.textContent).join('')
+    if (bolded) { for (const node of Array.from(block.querySelectorAll('strong,b'))) node.replaceWith(...Array.from(node.childNodes)) }
+    else document.execCommand('bold')
+    root.dispatchEvent(new Event('input', { bubbles: true }))
+  }
   function show(next: 'image' | 'link') {
     const root = editor.current
     if (!root) return
@@ -80,6 +103,7 @@ export function FormatToolbar({ t, lang, editor, tidy }: { t: typeof copy.fr; la
       {open && <div className="heading-menu" role="menu">{headings.map(([tag, label]) => <button key={tag} role="menuitem" onMouseDown={keep} onClick={() => run('formatBlock', tag)}>{label}</button>)}</div>}
     </div>
     <i className="sep" />
+    <button onMouseDown={keep} onClick={boldTitle} aria-label={labels.boldTitle} title={labels.boldTitle}><b>H</b></button>
     <button onMouseDown={keep} onClick={() => run('bold')} aria-label={t.bold} title={t.bold}><b>B</b></button>
     <button onMouseDown={keep} onClick={() => run('italic')} aria-label={t.italic} title={t.italic}><em>I</em></button>
     <button onMouseDown={keep} onClick={() => run('underline')} aria-label={t.underline} title={t.underline}><u>U</u></button>
