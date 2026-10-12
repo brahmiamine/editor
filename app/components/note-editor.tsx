@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronRight, Download, Ellipsis, Menu, PanelLeftClose, PanelLeftOpen, Pilcrow, Plus, Search, Type, X } from 'lucide-react'
 import { downloadText, exportNote, formatText, noteTitle, wordCount, type Note, type changeNote } from '../lib/notes'
 import { embedAttachments } from '../lib/attachments'
 import { detectNoteJson, looksLikeMarkdown } from '../lib/markdown'
@@ -77,22 +78,22 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
   const readonly = !!note?.trashedAt || readOnly
   return <section className="editor">
     <header>
-      <button className="menu-btn" onClick={openMenu} aria-label={t.menu}>☰</button>
-      <div className="crumb">{t.all} <span>›</span> {note?.body.trim() || note?.heading?.trim() ? note.title : t.untitled}</div>
+      <button className="menu-btn" onClick={openMenu} aria-label={t.menu}><Menu size={22} aria-hidden="true" /></button>
+      <div className="crumb">{t.all} <ChevronRight size={13} aria-hidden="true" /> {note?.body.trim() || note?.heading?.trim() ? note.title : t.untitled}</div>
       {(json || markdown || preview) && <span className="detect">{json ? t.json : markdown ? t.markdown : ''}<button onClick={() => setPreview(!preview)}>{preview ? t.edit : t.preview}</button></span>}
-      <button className="more-btn" disabled={!note} onClick={() => setMore(!more)} aria-expanded={more} aria-label={t.more}>⋯</button>
+      <button className="more-btn" disabled={!note} onClick={() => setMore(!more)} aria-expanded={more} aria-label={t.more}><Ellipsis size={18} aria-hidden="true" /></button>
       <div className={`actions ${more ? 'open' : ''}`}>
-        <button disabled={!note} onClick={() => void download('md')}>↓ .md</button>
-        <button disabled={!note} onClick={() => void download('txt')}>↓ .txt</button>
-        <button disabled={!note || readonly} aria-pressed={rich} title={t.richMode} aria-label={t.richMode} onClick={() => { setCodeNote(false); setRich(!rich) }}>≡</button>
-        <button disabled={!note || readonly} aria-label={t.tidy} title={t.tidy} onClick={() => update(formatText(text))}>¶</button>
-        <button aria-pressed={focus} onClick={() => setFocus(!focus)}>{focus ? f.exitFocus : f.focus}</button>
-        <button disabled={!note} onClick={() => { setFinding(!finding); requestAnimationFrame(() => findInput.current?.focus()) }} aria-label={f.find}>⌕</button>
+        <button disabled={!note} onClick={() => void download('md')} aria-label=".md" title=".md"><Download size={15} aria-hidden="true" /> .md</button>
+        <button disabled={!note} onClick={() => void download('txt')} aria-label=".txt" title=".txt"><Download size={15} aria-hidden="true" /> .txt</button>
+        <button disabled={!note || readonly} aria-pressed={rich} title={t.richMode} aria-label={t.richMode} onClick={() => { setCodeNote(false); setRich(!rich) }}><Type size={16} aria-hidden="true" /></button>
+        <button disabled={!note || readonly} aria-label={t.tidy} title={t.tidy} onClick={() => update(formatText(text))}><Pilcrow size={16} aria-hidden="true" /></button>
+        <button className="sidebar-toggle" aria-pressed={focus} aria-label={focus ? f.exitFocus : f.focus} title={focus ? f.exitFocus : f.focus} onClick={() => setFocus(!focus)}>{focus ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}</button>
+        <button disabled={!note} onClick={() => { setFinding(!finding); requestAnimationFrame(() => findInput.current?.focus()) }} aria-label={f.find}><Search size={16} aria-hidden="true" /></button>
       </div>
     </header>
     {note ? <>
       {note.conflictOf && <p role="status" className="conflict">{f.conflict}</p>}
-      {finding && <div className="find-bar"><input ref={findInput} aria-label={f.find} placeholder={f.find} value={query} onChange={event => { setQuery(event.target.value); setResult(-1) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(event.shiftKey ? -1 : 1) } }} /><span>{matches.length} {f.matches}</span><button onClick={() => findNext(-1)}>{f.previous}</button><button onClick={() => findNext(1)}>{f.next}</button><button onClick={() => setFinding(false)} aria-label={t.close}>×</button></div>}
+      {finding && <div className="find-bar"><input ref={findInput} aria-label={f.find} placeholder={f.find} value={query} onChange={event => { setQuery(event.target.value); setResult(-1) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(event.shiftKey ? -1 : 1) } }} /><span>{matches.length} {f.matches}</span><button onClick={() => findNext(-1)}>{f.previous}</button><button onClick={() => findNext(1)}>{f.next}</button><button onClick={() => setFinding(false)} aria-label={t.close}><X size={15} aria-hidden="true" /></button></div>}
       {rich && !preview && !readonly && !json && !codeNote && <FormatToolbar t={t} lang={lang} editor={area} tidy={() => update(formatText(text))} />}
       {failure && <p role="alert">{failure}</p>}
       <input className="note-title" aria-label={f.title} placeholder={f.titlePlaceholder} value={note.heading ?? ''} maxLength={200} readOnly={readonly} onChange={event => change({ heading: event.target.value, title: noteTitle(event.target.value, note.body) })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); area.current?.focus() } }} />
@@ -103,6 +104,6 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
       </div>
       <footer><span>{wordCount(text)} {t.words} <em>·</em> {Array.from(text).length} {t.chars}</span><span>{!readonly && <button className="clear" onClick={() => update('')}>{t.clear}</button>}<label>{f.textSize}<input aria-label={f.textSize} type="number" min="14" max="48" step="1" value={fontDraft} onChange={event => { setFontDraft(event.target.value); const size = event.target.valueAsNumber; if (Number.isInteger(size) && size >= 14 && size <= 48) setFont(size) }} onBlur={() => { const size = fontDraft.trim() ? Math.max(14, Math.min(48, Math.round(Number(fontDraft)))) : font; const normalized = Number.isFinite(size) ? size : font; setFont(normalized); setFontDraft(String(normalized)) }} /></label></span></footer>
     </> : <div className="empty editor-empty"><button onClick={add}>{t.newNote}</button></div>}
-    <button className="fab" disabled={readOnly} onClick={add} aria-label={t.newNote}>＋</button>
+    <button className="fab" disabled={readOnly} onClick={add} aria-label={t.newNote}><Plus size={24} aria-hidden="true" /></button>
   </section>
 }

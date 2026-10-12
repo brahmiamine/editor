@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Archive, ArchiveRestore, Ellipsis, History, Pin, PinOff, Share2, Tag, Trash2 } from 'lucide-react'
 import { copy, featureCopy, type Language } from '../lib/i18n'
 import { titleFromBody, type Note, type changeNote } from '../lib/notes'
 import { ShareDialog } from './share-dialog'
@@ -40,14 +41,14 @@ export function NoteMenu({ note, lang, label, userId, change, remove }: { note: 
   }
   const act = (run: () => void) => () => { setOpen(false); run() }
   return <div className="note-menu" ref={root}>
-    <button ref={trigger} className="note-more" aria-haspopup="menu" aria-expanded={open} aria-label={copy[lang].more + ' : ' + label} title={copy[lang].more} onClick={toggle}>⋯</button>
+    <button ref={trigger} className="note-more" aria-haspopup="menu" aria-expanded={open} aria-label={copy[lang].more + ' : ' + label} title={copy[lang].more} onClick={toggle}><Ellipsis size={18} aria-hidden="true" /></button>
     {open && <div className="note-menu-list" role="menu" style={{ top: pos.top, left: pos.left }}>
-      <button role="menuitem" onClick={act(() => change({ pinned: !note.pinned }))}>{note.pinned ? t.unpin : t.pin}</button>
-      <button role="menuitem" onClick={act(() => change({ archived: !note.archived }))}>{note.archived ? t.unarchive : t.archiveNote}</button>
-      <button role="menuitem" onClick={act(() => setPanel('history'))}>{t.history}</button>
-      {userId && <button role="menuitem" onClick={act(() => setPanel('share'))}>{t.share}</button>}
-      <input key={note.id + ':tags'} aria-label={t.tags} placeholder={t.tags} defaultValue={(note.tags || []).join(', ')} maxLength={400} onBlur={event => { const tags = [...new Set(event.target.value.split(/[,،]/).map(tag => tag.trim().slice(0, 40)).filter(Boolean))].slice(0, 10); if (tags.join(',') !== (note.tags || []).join(',')) change({ tags }) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); setOpen(false) } }} />
-      <button role="menuitem" className="danger" onClick={act(remove)}>{lang === 'fr' ? 'Supprimer' : lang === 'ar' ? 'حذف' : 'Delete'}</button>
+      <button role="menuitem" onClick={act(() => change({ pinned: !note.pinned }))}>{note.pinned ? <PinOff size={14} aria-hidden="true" /> : <Pin size={14} aria-hidden="true" />}{note.pinned ? t.unpin : t.pin}</button>
+      <button role="menuitem" onClick={act(() => change({ archived: !note.archived }))}>{note.archived ? <ArchiveRestore size={14} aria-hidden="true" /> : <Archive size={14} aria-hidden="true" />}{note.archived ? t.unarchive : t.archiveNote}</button>
+      <button role="menuitem" onClick={act(() => setPanel('history'))}><History size={14} aria-hidden="true" />{t.history}</button>
+      {userId && <button role="menuitem" onClick={act(() => setPanel('share'))}><Share2 size={14} aria-hidden="true" />{t.share}</button>}
+      <label className="tag-field"><Tag size={14} aria-hidden="true" /><input key={note.id + ':tags'} aria-label={t.tags} placeholder={t.tags} defaultValue={(note.tags || []).join(', ')} maxLength={400} onBlur={event => { const tags = [...new Set(event.target.value.split(/[,،]/).map(tag => tag.trim().slice(0, 40)).filter(Boolean))].slice(0, 10); if (tags.join(',') !== (note.tags || []).join(',')) change({ tags }) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); setOpen(false) } }} /></label>
+      <button role="menuitem" className="danger" onClick={act(remove)}><Trash2 size={14} aria-hidden="true" />{lang === 'fr' ? 'Supprimer' : lang === 'ar' ? 'حذف' : 'Delete'}</button>
     </div>}
     {panel === 'history' && <HistoryDialog note={note} lang={lang} change={change} close={() => setPanel(undefined)} />}
     {panel === 'share' && <ShareDialog note={note} userId={userId} lang={lang} open close={() => setPanel(undefined)} />}

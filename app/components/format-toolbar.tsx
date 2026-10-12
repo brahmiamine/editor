@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Bold, ChevronDown, Code, Heading, Image as ImageIcon, Italic, Link as LinkIcon, List, ListOrdered, ListTodo, Minus, Pilcrow, Quote, Redo2, Strikethrough, Table, Underline, Undo2 } from 'lucide-react'
 import { editorCopy, featureCopy, type copy, type Language } from '../lib/i18n'
 import { renderInline } from '../lib/markdown'
 import { editorRange, imageMarkdown, insertEditorHTML, readImage, safeImageUrl, safeLinkUrl } from '../lib/media'
@@ -99,28 +100,28 @@ export function FormatToolbar({ t, lang, editor, tidy }: { t: typeof copy.fr; la
   const headings: [string, string][] = [['<p>', t.paragraph], ['<h1>', t.h1], ['<h2>', t.h2], ['<h3>', t.h3]]
   return <div className="toolbar" role="toolbar" aria-label={t.richMode}>
     <div className="menu-wrap">
-      <button className="heading-btn" onMouseDown={keep} onClick={() => setOpen(value => !value)} aria-haspopup="menu" aria-expanded={open}>{t.headings} <span aria-hidden="true">⌄</span></button>
+      <button className="heading-btn" onMouseDown={keep} onClick={() => setOpen(value => !value)} aria-haspopup="menu" aria-expanded={open}>{t.headings} <ChevronDown size={14} aria-hidden="true" /></button>
       {open && <div className="heading-menu" role="menu">{headings.map(([tag, label]) => <button key={tag} role="menuitem" onMouseDown={keep} onClick={() => run('formatBlock', tag)}>{label}</button>)}</div>}
     </div>
     <i className="sep" />
-    <button onMouseDown={keep} onClick={boldTitle} aria-label={labels.boldTitle} title={labels.boldTitle}><b>H</b></button>
-    <button onMouseDown={keep} onClick={() => run('bold')} aria-label={t.bold} title={t.bold}><b>B</b></button>
-    <button onMouseDown={keep} onClick={() => run('italic')} aria-label={t.italic} title={t.italic}><em>I</em></button>
-    <button onMouseDown={keep} onClick={() => run('underline')} aria-label={t.underline} title={t.underline}><u>U</u></button>
-    <button onMouseDown={keep} onClick={() => run('strikeThrough')} aria-label={labels.strike} title={labels.strike}><s>S</s></button>
-    <button onMouseDown={keep} onClick={tidy} aria-label={t.tidy} title={t.tidy}>¶</button>
-    <button onMouseDown={keep} onClick={() => run('insertUnorderedList')} aria-label={t.bullets} title={t.bullets}>☰</button>
-    <button onMouseDown={keep} onClick={() => run('insertOrderedList')} aria-label={t.numbers} title={t.numbers}>1.</button>
-    <button onMouseDown={keep} onClick={() => { const root = editor.current; if (root) insertEditorHTML(root, '<ul><li class="task"><input type="checkbox" aria-label="' + f.task + '">' + f.task + '</li></ul>') }} aria-label={f.task} title={f.task}>☑</button>
-    <button onMouseDown={keep} onClick={() => { const root = editor.current; if (root) insertEditorHTML(root, '<table><thead><tr><th>' + f.title + '</th><th>' + t.notes + '</th></tr></thead><tbody><tr><td>…</td><td>…</td></tr></tbody></table><p><br></p>') }} aria-label={f.table} title={f.table}>▦</button>
+    <button onMouseDown={keep} onClick={boldTitle} aria-label={labels.boldTitle} title={labels.boldTitle}><Heading size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('bold')} aria-label={t.bold} title={t.bold}><Bold size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('italic')} aria-label={t.italic} title={t.italic}><Italic size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('underline')} aria-label={t.underline} title={t.underline}><Underline size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('strikeThrough')} aria-label={labels.strike} title={labels.strike}><Strikethrough size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={tidy} aria-label={t.tidy} title={t.tidy}><Pilcrow size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('insertUnorderedList')} aria-label={t.bullets} title={t.bullets}><List size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('insertOrderedList')} aria-label={t.numbers} title={t.numbers}><ListOrdered size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => { const root = editor.current; if (root) insertEditorHTML(root, '<ul><li class="task"><input type="checkbox" aria-label="' + f.task + '">' + f.task + '</li></ul>') }} aria-label={f.task} title={f.task}><ListTodo size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => { const root = editor.current; if (root) insertEditorHTML(root, '<table><thead><tr><th>' + f.title + '</th><th>' + t.notes + '</th></tr></thead><tbody><tr><td>…</td><td>…</td></tr></tbody></table><p><br></p>') }} aria-label={f.table} title={f.table}><Table size={16} aria-hidden="true" /></button>
     <i className="sep" />
-    <button onMouseDown={keep} onClick={() => show('image')} aria-label={labels.image} title={labels.image}>▧</button>
-    <button onMouseDown={keep} onClick={() => show('link')} aria-label={labels.link} title={labels.link}>↗</button>
-    <button onMouseDown={keep} onClick={() => run('formatBlock', '<blockquote>')} aria-label={labels.quote} title={labels.quote}>❝</button>
-    <button onMouseDown={keep} onClick={insertCode} aria-label={labels.code} title={labels.code}>{'</>'}</button>
-    <button onMouseDown={keep} onClick={() => run('insertHorizontalRule')} aria-label={labels.rule} title={labels.rule}>―</button>
-    <button onMouseDown={keep} onClick={() => run('undo')} aria-label={t.undo} title={t.undo}>↶</button>
-    <button onMouseDown={keep} onClick={() => run('redo')} aria-label={t.redo} title={t.redo}>↷</button>
+    <button onMouseDown={keep} onClick={() => show('image')} aria-label={labels.image} title={labels.image}><ImageIcon size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => show('link')} aria-label={labels.link} title={labels.link}><LinkIcon size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('formatBlock', '<blockquote>')} aria-label={labels.quote} title={labels.quote}><Quote size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={insertCode} aria-label={labels.code} title={labels.code}><Code size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('insertHorizontalRule')} aria-label={labels.rule} title={labels.rule}><Minus size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('undo')} aria-label={t.undo} title={t.undo}><Undo2 size={16} aria-hidden="true" /></button>
+    <button onMouseDown={keep} onClick={() => run('redo')} aria-label={t.redo} title={t.redo}><Redo2 size={16} aria-hidden="true" /></button>
     {error && !kind && <span role="alert">{error}</span>}
     <dialog ref={dialog} className="insert-dialog" aria-labelledby="insert-media-title" onCancel={close}>
       <h2 id="insert-media-title">{kind === 'image' ? labels.image : labels.link}</h2>

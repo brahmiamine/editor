@@ -189,7 +189,8 @@ mark{background:var(--accent);color:var(--ink);border-radius:2px}
 .shared-note{max-width:860px;margin:auto;padding:24px 16px;min-height:100vh}
 .shared-note>a{display:block;color:var(--ink);margin-bottom:24px}
 .auth-card>select{float:inline-end;background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:4px}
-@media(max-width:760px){.editor header{flex-wrap:wrap}.detect{font-size:10px}@media(prefers-reduced-motion:reduce){.sidebar,.scrim{transition:none}}
+@media(max-width:760px){.editor header{flex-wrap:wrap}.detect{font-size:10px}.sidebar{padding-top:18px}.brand{margin-bottom:18px}.note-filters{margin-top:8px}.side-head{margin-top:14px}.shared-note{padding:16px 10px}}
+@media(prefers-reduced-motion:reduce){.sidebar,.scrim{transition:none}}
 .auth-page{min-height:100vh;min-height:100dvh;display:grid;place-items:center;background:var(--paper);color:var(--ink);padding:40px 0}
 .auth-card{width:min(480px,100vw);padding:0 56px}
 .auth-brand{display:block;color:var(--ink);font-weight:700;font-size:17px;text-decoration:none;margin-bottom:64px}
@@ -253,3 +254,13 @@ mark{background:var(--accent);color:var(--ink);border-radius:2px}
 .conflict{margin:0 10px 8px;font-size:11px;color:var(--danger)}
 .note-title{width:100%;margin:0 0 6px;padding:0 10px;border:0;outline:0;background:none;color:var(--ink);font-size:1.7em;font-weight:800;letter-spacing:-.03em;line-height:1.25}
 .note-title::placeholder{color:var(--muted);font-weight:700}
+.mark{display:inline-flex;vertical-align:middle}
+.pin-mark{display:inline;margin-inline-end:4px;color:var(--accent);vertical-align:-1px}
+.search svg{flex:none}
+.new,.icon-btn,.note-more,.actions button,.find-bar button{display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.note-menu-list>button{display:flex;align-items:center;gap:8px}
+.tag-field{display:flex;align-items:center;gap:8px;padding:0 9px;background:var(--field);border-radius:5px;color:var(--muted)}
+.tag-field input{flex:1;min-width:0;border:0;background:none;padding:7px 0;color:var(--ink);font:inherit;outline:0}
+.sidebar-bottom button{display:inline-flex;align-items:center;gap:6px}
+.crumb svg{vertical-align:middle;margin:0 2px}
+.focus-mode .menu-btn{display:none}
