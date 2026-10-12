@@ -3,5 +3,7 @@ node_modules
 .next-dev
 *.tsbuildinfo
 out
+test-results
+playwright-report
 .env*
 !.env.example

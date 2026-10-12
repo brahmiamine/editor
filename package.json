@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/build-offline.mjs",
     "start": "npx serve out -l 3000",
     "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
@@ -16,6 +18,7 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@types/node": "^20.17.10",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

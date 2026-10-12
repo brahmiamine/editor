@@ -1,83 +1,108 @@
 import { useEffect, useRef, useState } from 'react'
-import { exportNote, formatText, wordCount, type Note } from '../lib/notes'
-import { looksLikeMarkdown, parseJson } from '../lib/markdown'
-import type { copy, Language } from '../lib/i18n'
+import { downloadText, exportNote, formatText, wordCount, type Note, type changeNote } from '../lib/notes'
+import { embedAttachments } from '../lib/attachments'
+import { detectNoteJson, looksLikeMarkdown } from '../lib/markdown'
+import { featureCopy, type copy, type Language } from '../lib/i18n'
 import { FormatToolbar } from './format-toolbar'
 import { RichView } from './rich-view'
-type Props = { note?: Note; t: typeof copy.fr; lang: Language; font: number; setFont: (size: number) => void; rich: boolean; setRich: (rich: boolean) => void; update: (body: string) => void; add: () => void; remove: () => void; openMenu: () => void }
-type View = { id: string; mode: 'edit' | 'preview'; flat: boolean }
+import { NoteTools } from './note-tools'
+type Props = { note?: Note; t: typeof copy.fr; lang: Language; font: number; setFont: (size: number) => void; rich: boolean; setRich: (rich: boolean) => void; update: (body: string) => void; add: () => void; openMenu: () => void; change: (patch: Parameters<typeof changeNote>[2]) => void; userId?: string; focus: boolean; setFocus: (value: boolean) => void; readOnly: boolean }
 
-function ago(time: number, now: number, lang: Language) {
-  const format = new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' })
-  const seconds = Math.round((time - now) / 1000)
-  if (Math.abs(seconds) < 60) return format.format(0, 'second')
-  if (Math.abs(seconds) < 3600) return format.format(Math.round(seconds / 60), 'minute')
-  if (Math.abs(seconds) < 86400) return format.format(Math.round(seconds / 3600), 'hour')
-  return format.format(Math.round(seconds / 86400), 'day')
-}
-
-export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update, add, remove, openMenu }: Props) {
-  const [now, setNow] = useState(() => Date.now())
+export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update, add, openMenu, change, userId, focus, setFocus, readOnly }: Props) {
   const [more, setMore] = useState(false)
-  const [chosen, setChosen] = useState<View>()
-  const title = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState(false)
+  const [codeNote, setCodeNote] = useState(false)
+  const [finding, setFinding] = useState(false)
+  const [query, setQuery] = useState('')
+  const [result, setResult] = useState(0)
+  const [failure, setFailure] = useState('')
+  const [fontDraft, setFontDraft] = useState(String(font))
+  const findInput = useRef<HTMLInputElement>(null)
   const area = useRef<HTMLElement | null>(null)
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer) }, [])
-  useEffect(() => setNow(Date.now()), [note?.updated])
+  const f = featureCopy[lang]
   const text = note?.body ?? ''
-  const json = !!parseJson(text)
+  const json = detectNoteJson(text) !== null
   const markdown = looksLikeMarkdown(text)
-  // A note that is JSON when opened starts as a block with a copy button; the choice then stays until toggled.
-  useEffect(() => { if (note) setChosen({ id: note.id, mode: parseJson(note.body) ? 'preview' : 'edit', flat: !!parseJson(note.body) }) }, [note?.id])
-  const view: View = chosen && chosen.id === note?.id ? chosen : { id: note?.id ?? '', mode: json ? 'preview' : 'edit', flat: json }
-  const preview = view.mode === 'preview'
-  // "flat" notes are edited as a single JSON document without a separate title line.
-  const flat = preview ? json : view.flat
-  function download(extension: 'txt' | 'md') {
-    if (!note) return
-    const url = URL.createObjectURL(new Blob([exportNote(note, extension)], { type: 'text/plain;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url; link.download = `${note.title.replace(/[<>:"/\\|?*]/g, '_') || 'note'}.${extension}`; link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  useEffect(() => { setFontDraft(String(font)) }, [font])
+  useEffect(() => { setPreview(false); setCodeNote(detectNoteJson(note?.body || '') !== null); setQuery(''); setFinding(false); setFailure('') }, [note?.id])
+  useEffect(() => { if (json) setCodeNote(true) }, [json])
+  useEffect(() => {
+    const root = area.current
+    if (!preview && !note?.trashedAt && root) {
+      root.focus()
+      if (!(root instanceof HTMLTextAreaElement)) {
+        // A range retained from the replaced textarea must not select the whole rich note.
+        const range = document.createRange(); range.selectNodeContents(root); range.collapse(false)
+        const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range)
+      }
+    }
+  }, [note?.id, preview, rich])
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); setFinding(true); requestAnimationFrame(() => findInput.current?.focus()) }
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) { setFocus(false); setFinding(false) }
+    }
+    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key)
+  }, [setFocus])
+  const matches: number[] = []
+  if (query) { const source = text.toLocaleLowerCase(), search = query.toLocaleLowerCase(); let index = 0; while ((index = source.indexOf(search, index)) >= 0) { matches.push(index); index += Math.max(search.length, 1) } }
+  function findNext(direction: number) {
+    const root = area.current
+    if (!root || !query) return
+    if (root instanceof HTMLTextAreaElement) {
+      const position = ((result + direction) % matches.length + matches.length) % matches.length
+      if (!matches.length) return
+      setResult(position); root.focus(); root.setSelectionRange(matches[position], matches[position] + query.length)
+    } else {
+      const nodes: Text[] = []; const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+      const source = nodes.map(node => node.textContent).join('')
+      const hits: number[] = []; let start = 0
+      while ((start = source.toLocaleLowerCase().indexOf(query.toLocaleLowerCase(), start)) >= 0) { hits.push(start); start += query.length }
+      if (!hits.length) return
+      const position = ((result + direction) % hits.length + hits.length) % hits.length; setResult(position)
+      let offset = 0; const range = document.createRange()
+      for (const node of nodes) {
+        const end = offset + node.length
+        if (hits[position] >= offset && hits[position] < end) range.setStart(node, hits[position] - offset)
+        if (hits[position] + query.length > offset && hits[position] + query.length <= end) { range.setEnd(node, hits[position] + query.length - offset); break }
+        offset = end
+      }
+      root.focus(); const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range); range.startContainer.parentElement?.scrollIntoView({ block: 'nearest' })
+    }
   }
-  // The first line of the body is edited as the note title, the rest as its text.
-  const split = text.indexOf('\n')
-  const head = split < 0 ? text : text.slice(0, split)
-  const rest = split < 0 ? '' : text.slice(split + 1)
-  const content = flat ? text : rest
-  const setContent = (value: string) => update(flat ? value : head + '\n' + value)
-  const action = (run: () => void) => () => { setMore(false); run() }
-  const toggleView = () => note && setChosen({ id: note.id, mode: preview ? 'edit' : 'preview', flat: json })
-  const focusBody = () => { area.current?.focus(); if (area.current instanceof HTMLTextAreaElement) area.current.setSelectionRange(0, 0) }
+  async function download(extension: 'txt' | 'md') {
+    if (!note) return
+    try { downloadText(await embedAttachments(exportNote(note, extension), userId), note.title.replace(/[<>:"/\\|?*]/g, '_') + '.' + extension) } catch { setFailure(f.failure) }
+  }
+  const readonly = !!note?.trashedAt || readOnly
   return <section className="editor">
     <header>
       <button className="menu-btn" onClick={openMenu} aria-label={t.menu}>☰</button>
       <div className="crumb">{t.all} <span>›</span> {note?.body.trim() ? note.title : t.untitled}</div>
-      <button className="more-btn" disabled={!note} onClick={() => setMore(value => !value)} aria-expanded={more} aria-label={t.more}>⋯</button>
+      {(json || markdown || preview) && <span className="detect">{json ? t.json : markdown ? t.markdown : ''}<button onClick={() => setPreview(!preview)}>{preview ? t.edit : t.preview}</button></span>}
+      <button className="more-btn" disabled={!note} onClick={() => setMore(!more)} aria-expanded={more} aria-label={t.more}>⋯</button>
       <div className={`actions ${more ? 'open' : ''}`}>
-        <button disabled={!note} onClick={action(() => download('md'))} aria-label="Export Markdown">↓ .md</button>
-        <button disabled={!note} onClick={action(() => download('txt'))} aria-label="Export text">↓ .txt</button>
-        <button disabled={!note} className={rich ? 'on' : ''} aria-pressed={rich} aria-label={t.richMode} title={t.richMode} onClick={action(() => setRich(!rich))}>≡</button>
-        <button disabled={!note} className="danger" aria-label={t.delete} title={t.delete} onClick={action(remove)}>⌫</button>
+        <button disabled={!note} onClick={() => void download('md')}>↓ .md</button>
+        <button disabled={!note} onClick={() => void download('txt')}>↓ .txt</button>
+        <button disabled={!note || readonly} aria-pressed={rich} title={t.richMode} aria-label={t.richMode} onClick={() => { setCodeNote(false); setRich(!rich) }}>≡</button>
+        <button disabled={!note || readonly} aria-label={t.tidy} title={t.tidy} onClick={() => update(formatText(text))}>¶</button>
+        <button aria-pressed={focus} onClick={() => setFocus(!focus)}>{focus ? f.exitFocus : f.focus}</button>
+        <button disabled={!note} onClick={() => { setFinding(!finding); requestAnimationFrame(() => findInput.current?.focus()) }} aria-label={f.find}>⌕</button>
       </div>
     </header>
     {note ? <>
-      {rich && !preview && !flat && <FormatToolbar t={t} tidy={() => update(formatText(note.body))} />}
-      <div className="page" key={note.id}>
-        {!flat && <input ref={title} className="title" autoFocus={!note.body} aria-label={t.untitled} placeholder={t.untitled} value={head}
-          onChange={event => update(rest || split >= 0 ? event.target.value + '\n' + rest : event.target.value)}
-          onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); focusBody() } }} />}
-        <div className="meta"><span>{t.modified} {ago(note.updated, now, lang)}</span>
-          {(json || markdown || preview) && <span className="detect">{json ? t.json : markdown ? t.markdown : ''}<button onClick={toggleView}>{preview ? t.edit : t.preview}</button></span>}</div>
-        {preview ? <RichView markdown={content} editable={false} font={font} label={t.preview} />
-          : rich && !flat ? <RichView markdown={content} editable font={font} onChange={setContent} innerRef={area} label={t.notes} />
-          : <textarea ref={area as React.RefObject<HTMLTextAreaElement>} autoFocus={!!note.body || flat} className={`body ${flat ? 'mono' : ''}`} aria-label={t.notes} style={{ fontSize: font }} value={content} placeholder={t.start}
-            onChange={event => setContent(event.target.value)}
-            onKeyDown={event => { const el = event.currentTarget; if (!flat && event.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) { event.preventDefault(); title.current?.focus() } }} />}
+      {!readonly && !focus && <NoteTools key={note.id} note={note} lang={lang} change={change} update={update} userId={userId} />}
+      {finding && <div className="find-bar"><input ref={findInput} aria-label={f.find} placeholder={f.find} value={query} onChange={event => { setQuery(event.target.value); setResult(-1) }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(event.shiftKey ? -1 : 1) } }} /><span>{matches.length} {f.matches}</span><button onClick={() => findNext(-1)}>{f.previous}</button><button onClick={() => findNext(1)}>{f.next}</button><button onClick={() => setFinding(false)} aria-label={t.close}>×</button></div>}
+      {rich && !preview && !readonly && !json && !codeNote && <FormatToolbar t={t} lang={lang} editor={area} tidy={() => update(formatText(text))} />}
+      {failure && <p role="alert">{failure}</p>}
+      <div className="page" key={note.id + ':' + preview + ':' + rich}>
+        {preview || readonly ? <RichView markdown={text} editable={false} font={font} label={t.preview} lang={lang} userId={userId} innerRef={area} />
+          : rich && !json && !codeNote ? <RichView markdown={text} editable font={font} onChange={update} innerRef={area} label={t.notes} lang={lang} userId={userId} />
+          : <textarea ref={area as React.RefObject<HTMLTextAreaElement>} autoFocus className={`body ${json || codeNote ? 'mono' : ''}`} aria-label={t.notes} style={{ fontSize: font }} value={text} placeholder={t.start} onChange={event => update(event.target.value)} />}
       </div>
-      <footer><span>{wordCount(note.body)} {t.words} <em>·</em> {Array.from(note.body).length} {t.chars}</span>
-        <span><button className="clear" onClick={() => update('')}>{t.clear}</button><label>A <input aria-label="Text size" type="range" min="14" max="48" step="1" value={font} onChange={event => setFont(Math.max(14, Math.min(48, event.target.valueAsNumber)))} /> {font}</label></span>
-      </footer></> : <div className="empty editor-empty"><button onClick={add}>{t.newNote}</button></div>}
-    <button className="fab" onClick={add} aria-label={t.newNote}>＋</button>
+      <footer><span>{wordCount(text)} {t.words} <em>·</em> {Array.from(text).length} {t.chars}</span><span>{!readonly && <button className="clear" onClick={() => update('')}>{t.clear}</button>}<label>{f.textSize}<input aria-label={f.textSize} type="number" min="14" max="48" step="1" value={fontDraft} onChange={event => { setFontDraft(event.target.value); const size = event.target.valueAsNumber; if (Number.isInteger(size) && size >= 14 && size <= 48) setFont(size) }} onBlur={() => { const size = fontDraft.trim() ? Math.max(14, Math.min(48, Math.round(Number(fontDraft)))) : font; const normalized = Number.isFinite(size) ? size : font; setFont(normalized); setFontDraft(String(normalized)) }} /></label></span></footer>
+    </> : <div className="empty editor-empty"><button onClick={add}>{t.newNote}</button></div>}
+    <button className="fab" disabled={readOnly} onClick={add} aria-label={t.newNote}>＋</button>
   </section>
 }

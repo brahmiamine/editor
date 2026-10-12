@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/globals.css"
+        ],
+        "createdAt": "2026-10-12T10:46:40.485Z",
+        "reason": "Agent review: the sole match is .rich blockquote; its leading border is a semantic Markdown quotation marker, not a decorative card accent."
+      }
+    ]
+  }
+}

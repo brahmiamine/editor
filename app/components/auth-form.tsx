@@ -2,10 +2,10 @@
 import Link from 'next/link'
 import { FormEvent, useEffect, useState } from 'react'
 import { basePath, supabase } from '../supabase'
+import { copy, featureCopy, type Language } from '../lib/i18n'
 
 type Mode = 'login' | 'signup' | 'magic' | 'reset' | 'update'
-const titles = { login: 'Bon retour.', signup: 'Créer un compte.', magic: 'Connexion sans mot de passe.', reset: 'Mot de passe oublié ?', update: 'Choisir un nouveau mot de passe.' }
-const buttons = { login: 'Se connecter', signup: 'Créer mon compte', magic: 'Envoyer le lien magique', reset: 'Envoyer le lien', update: 'Enregistrer le mot de passe' }
+const modes: Mode[] = ['login','signup','magic','reset','update']
 
 export default function AuthForm() {
   const [mode, setMode] = useState<Mode>('login')
@@ -17,14 +17,19 @@ export default function AuthForm() {
   const [busy, setBusy] = useState(false)
   const [recoveryReady, setRecoveryReady] = useState(false)
   const [theme, setTheme] = useState('paper')
+  const [lang, setLang] = useState<Language>('fr')
+  const t = featureCopy[lang]
+  const titles = { login: t.login, signup: t.signup, magic: t.magic, reset: t.reset, update: t.password }
+  const buttons = { ...titles, update: t.savePassword }
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}')
       if (['paper', 'night', 'sun'].includes(saved.theme)) setTheme(saved.theme)
+      if (['fr', 'en', 'ar'].includes(saved.lang)) setLang(saved.lang)
     } catch {}
     const requested = new URLSearchParams(location.search).get('mode')
-    if (requested && Object.hasOwn(titles, requested)) setMode(requested as Mode)
+    if (requested && modes.includes(requested as Mode)) setMode(requested as Mode)
     const hash = new URLSearchParams(location.hash.slice(1))
     if (hash.get('error_description')) setError(hash.get('error_description')!)
     if (!supabase) return
@@ -44,9 +49,9 @@ export default function AuthForm() {
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError(''); setMessage('')
-    if (!supabase) { setError('La connexion n’est pas encore configurée. Vos notes restent disponibles localement.'); return }
+    if (!supabase) { setError(t.notConfigured); return }
     if (mode === 'update' && (!recoveryReady || password !== confirmation)) {
-      setError(!recoveryReady ? 'Ouvrez le lien de réinitialisation reçu par email.' : 'Les mots de passe ne correspondent pas.')
+      setError(!recoveryReady ? t.openReset : t.mismatch)
       return
     }
     setBusy(true)
@@ -63,29 +68,30 @@ export default function AuthForm() {
         : await supabase.auth.signInWithPassword({ email, password })
       if (result.error) throw result.error
       if (mode === 'login' || mode === 'update') { location.replace(`${basePath}/notes/`); return }
-      setMessage(mode === 'signup' ? 'Si ce compte existe déjà, connectez-vous ou utilisez un lien magique. Pour un nouveau compte, consultez votre email de confirmation.' : mode === 'magic' ? 'Si votre compte existe, vous recevrez un lien de connexion.' : 'Si votre compte existe, vous recevrez un lien de réinitialisation.')
+      setMessage(mode === 'signup' ? t.signupMessage : mode === 'magic' ? t.magicMessage : t.resetMessage)
       setPassword('')
     } catch (err) {
       const code = err && typeof err === 'object' && 'code' in err ? err.code : ''
-      setError(code === 'over_email_send_rate_limit' ? 'Limite d’envoi atteinte. Patientez au moins une minute avant de demander un autre email.' : err instanceof Error ? err.message : 'Connexion impossible. Réessayez.')
+      setError(code === 'over_email_send_rate_limit' ? t.rateLimit : t.failure)
     }
     finally { setBusy(false) }
   }
 
-  return <main className={`auth-page ${theme}`}><div className="auth-card">
+  return <main className={`auth-page ${theme}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang}><div className="auth-card">
+    <select aria-label={copy[lang].language} value={lang} onChange={event => { const next = event.target.value as Language; setLang(next); try { const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}'); localStorage.setItem('papertrail-preferences', JSON.stringify({ ...saved, lang: next })) } catch {} }}><option value="fr">Français</option><option value="en">English</option><option value="ar">العربية</option></select>
     <Link className="auth-brand" href="/"><span className="mark">✳</span> papertrail</Link>
-    <h1>{titles[mode]}</h1><p className="auth-intro">Vos notes, disponibles partout et toujours à vous.</p>
+    <h1>{titles[mode]}</h1><p className="auth-intro">{t.authIntro}</p>
     <form onSubmit={submit}>
-      {mode !== 'update' && <input aria-label="Email" type="email" autoComplete="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />}
-      {(mode === 'login' || mode === 'signup' || mode === 'update') && <input aria-label={mode === 'update' ? 'Nouveau mot de passe' : 'Mot de passe'} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={mode === 'update' ? 'Nouveau mot de passe' : 'Mot de passe'} minLength={mode === 'login' ? undefined : 8} value={password} onChange={e => setPassword(e.target.value)} required />}
-      {mode === 'update' && <input aria-label="Confirmer le mot de passe" type="password" autoComplete="new-password" placeholder="Confirmer le mot de passe" minLength={8} value={confirmation} onChange={e => setConfirmation(e.target.value)} required />}
-      <button className="auth-submit" disabled={busy || (mode === 'update' && !recoveryReady)}>{busy ? 'En cours…' : buttons[mode]}</button>
+      {mode !== 'update' && <input aria-label={t.email} type="email" autoComplete="email" placeholder={t.email} value={email} onChange={e => setEmail(e.target.value)} required />}
+      {(mode === 'login' || mode === 'signup' || mode === 'update') && <input aria-label={mode === 'update' ? t.password : t.authPassword} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={mode === 'update' ? t.password : t.authPassword} minLength={mode === 'login' ? undefined : 8} value={password} onChange={e => setPassword(e.target.value)} required />}
+      {mode === 'update' && <input aria-label={t.confirmPassword} type="password" autoComplete="new-password" placeholder={t.confirmPassword} minLength={8} value={confirmation} onChange={e => setConfirmation(e.target.value)} required />}
+      <button className="auth-submit" disabled={busy || (mode === 'update' && !recoveryReady)}>{busy ? t.busy : buttons[mode]}</button>
     </form>
     {error && <div className="auth-error" role="alert">{error}</div>}
     {message && <div className="auth-message" role="status">{message}</div>}
-    {mode === 'update' && !recoveryReady && <p role="status">Ouvrez le lien reçu par email pour continuer.</p>}
-    <nav className="auth-links" aria-label="Authentification">
-      {mode === 'login' ? <><a href="?mode=signup">Créer un compte</a><a href="?mode=magic">Utiliser un lien magique</a><a href="?mode=reset">Mot de passe oublié ?</a></> : <><a href="?mode=login">← Retour à la connexion</a>{mode === 'signup' && <a href="?mode=magic">Utiliser un lien magique</a>}</>}
+    {mode === 'update' && !recoveryReady && <p role="status">{t.openReset}</p>}
+    <nav className="auth-links" aria-label={t.login}>
+      {mode === 'login' ? <><a href="?mode=signup">{t.signup}</a><a href="?mode=magic">{t.magic}</a><a href="?mode=reset">{t.reset}</a></> : <><a href="?mode=login">{t.backLogin}</a>{mode === 'signup' && <a href="?mode=magic">{t.magic}</a>}</>}
     </nav>
   </div></main>
 }
