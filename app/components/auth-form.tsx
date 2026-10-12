@@ -19,7 +19,7 @@ export default function AuthForm() {
 
   useEffect(() => {
     const requested = new URLSearchParams(location.search).get('mode')
-    if (requested && requested in titles) setMode(requested as Mode)
+    if (requested && Object.hasOwn(titles, requested)) setMode(requested as Mode)
     const hash = new URLSearchParams(location.hash.slice(1))
     if (hash.get('error_description')) setError(hash.get('error_description')!)
     if (!supabase) return

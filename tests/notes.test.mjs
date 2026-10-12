@@ -13,6 +13,7 @@ test('edits address the visible note and queue autosave', () => {
   const result = editNote({ ...emptyNotebook(), notes: [note] }, note.id, 'New content')
   assert.equal(result.notes[0].title, 'New content')
   assert.deepEqual(result.pending, [note.id])
+  assert.ok(editNote(result, note.id, 'Next edit').notes[0].updated > result.notes[0].updated)
   assert.deepEqual(editNote(result, 'missing', 'Oops'), result)
 })
 test('deleting the last note persists an empty notebook and its tombstone', () => {

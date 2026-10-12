@@ -46,6 +46,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
     const timer = setTimeout(() => {
       queue.current = queue.current.catch(() => {}).then(async () => {
         if (generation.current !== version) return
+        // ponytail: last-write-wins across devices; add version checks for collaborative editing.
         const rows = snapshot.notes.filter(note => snapshot.pending.includes(note.id)).map(note => ({ id: note.id, user_id: userId, title: note.title, body: note.body, color: note.color, updated_at: new Date(note.updated).toISOString() }))
         if (rows.length) { const { error } = await client.from('notes').upsert(rows); if (error) throw error }
         if (snapshot.deleted.length) { const { error } = await client.from('notes').delete().eq('user_id', userId).in('id', snapshot.deleted); if (error) throw error }

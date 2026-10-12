@@ -10,7 +10,7 @@ export function createNote(): Note {
 }
 export function editNote(book: Notebook, id: string, body: string): Notebook {
   if (!book.notes.some(note => note.id === id)) return book
-  return { ...book, notes: book.notes.map(note => note.id === id ? { ...note, body, title: titleFromBody(body), updated: Date.now() } : note), pending: [...new Set([...book.pending, id])] }
+  return { ...book, notes: book.notes.map(note => note.id === id ? { ...note, body, title: titleFromBody(body), updated: Math.max(Date.now(), note.updated + 1) } : note), pending: [...new Set([...book.pending, id])] }
 }
 export function deleteNote(book: Notebook, id: string): Notebook {
   return { notes: book.notes.filter(note => note.id !== id), pending: book.pending.filter(value => value !== id), deleted: [...new Set([...book.deleted, id])] }

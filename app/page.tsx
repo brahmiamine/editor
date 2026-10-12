@@ -31,7 +31,7 @@ export default function Home() {
     if (preferencesReady) try { localStorage.setItem('papertrail-preferences', JSON.stringify({ theme, lang, font })) } catch {}
     document.documentElement.lang = lang
   }, [theme, lang, font, preferencesReady])
-  const add = () => { setActive(notebook.add()); setQuery('') }
+  const add = () => { if (notebook.ready) { setActive(notebook.add()); setQuery('') } }
   return <main className={`app ${theme}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ '--sidebar': sidebar + 'px' } as React.CSSProperties}>
     <NoteSidebar notes={notebook.notes} active={current?.id} select={setActive} query={query} search={setQuery} add={add} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={() => { void supabase?.auth.signOut() }} status={notebook.status} retry={notebook.retry} ready={notebook.ready} />
     <NoteEditor note={current} t={copy[lang]} font={font} setFont={setFont} update={body => { if (current) notebook.update(current.id, body) }} remove={() => { if (current) notebook.remove(current.id) }} add={add} />
