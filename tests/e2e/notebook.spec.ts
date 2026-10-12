@@ -20,7 +20,7 @@ test('new notes autofocus, survive reload, archive, trash and restore', async ({
   await expect(editor).toHaveValue('Premier texte\nUne idée importante')
   await page.getByRole('button', { name: /Plus d’actions : Premier texte/ }).click()
   await page.getByRole('menuitem', { name: 'Désarchiver', exact: true }).click()
-  await page.getByRole('button', { name: 'Tout', exact: true }).click()
+  await page.getByRole('button', { name: 'Archives', exact: true }).click()
   await page.getByRole('button', { name: /Plus d’actions : Premier texte/ }).click()
   await page.getByRole('menuitem', { name: 'Supprimer', exact: true }).click()
   await page.getByRole('button', { name: 'Annuler', exact: true }).click()

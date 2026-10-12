@@ -102,8 +102,8 @@ export function importGuestNotes(account: Notebook, guest: Notebook): Notebook {
   return { ...account, notes: [...imported, ...account.notes], pending: [...new Set([...account.pending, ...imported.map(note => note.id)])] }
 }
 export type NoteFilter = 'all' | 'pinned' | 'archive' | 'trash'
-export function visibleNotes(notes: Note[], filter: NoteFilter, query: string, tag: string): Note[] {
-  return notes.filter(note => (filter === 'trash' ? !!note.trashedAt : !note.trashedAt && (filter === 'archive' ? note.archived : !note.archived) && (filter !== 'pinned' || note.pinned)) && (!tag || note.tags?.includes(tag)) && (note.title + ' ' + note.body).toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updated - a.updated)
+export function visibleNotes(notes: Note[], filter: NoteFilter, query: string): Note[] {
+  return notes.filter(note => (filter === 'trash' ? !!note.trashedAt : !note.trashedAt && (filter === 'archive' ? note.archived : !note.archived) && (filter !== 'pinned' || note.pinned)) && (note.title + ' ' + note.body).toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updated - a.updated)
 }
 export function backupNotebook(book: Notebook) { return JSON.stringify({ format: 'papertrail', version: 1, exportedAt: new Date().toISOString(), notes: book.notes, pending: [], deleted: [] }, null, 2) }
 export function importBackup(book: Notebook, raw: string) {

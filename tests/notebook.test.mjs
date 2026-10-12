@@ -39,8 +39,8 @@ test('organization filters exclude trash and archives and sort pinned notes firs
   const b = { ...notes.createNote(), body: 'Beta', title: 'Beta', updated: 200, pinned: true }
   const c = { ...notes.createNote(), archived: true }
   const d = { ...notes.createNote(), trashedAt: Date.now() }
-  assert.deepEqual(notes.visibleNotes([a, b, c, d], 'all', '', '').map(n => n.id), [b.id, a.id])
-  assert.deepEqual(notes.visibleNotes([a, b], 'all', 'alp', 'work').map(n => n.id), [a.id])
+  assert.deepEqual(notes.visibleNotes([a, b, c, d], 'all', '').map(n => n.id), [b.id, a.id])
+  assert.deepEqual(notes.visibleNotes([a, b], 'all', 'alp').map(n => n.id), [a.id])
 })
 test('trash expires after 30 days without discarding active or recent trashed notes', () => {
   assert.equal(typeof notes.expireTrash, 'function')

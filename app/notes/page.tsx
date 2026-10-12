@@ -26,10 +26,9 @@ export default function Notes() {
   const [deleting, setDeleting] = useState<Note>()
   const [preferencesReady, setPreferencesReady] = useState(false)
   const [filter, setFilter] = useState<NoteFilter>('all')
-  const [tag, setTag] = useState('')
   const [focus, setFocus] = useState(false)
   const [settings, setSettings] = useState(false)
-  const notes = visibleNotes(notebook.notes, filter, query, tag)
+  const notes = visibleNotes(notebook.notes, filter, query)
   const current = notes.find(note => note.id === active) || notes[0]
   useEffect(() => {
     try {
@@ -45,7 +44,7 @@ export default function Notes() {
     if (preferencesReady) try { localStorage.setItem('papertrail-preferences', JSON.stringify({ theme, lang, font, rich })) } catch {}
     document.documentElement.lang = lang
   }, [theme, lang, font, rich, preferencesReady])
-  const add = () => { if (notebook.ready) { setActive(notebook.add()); setFilter('all'); setTag(''); setQuery(''); setDrawer(false) } }
+  const add = () => { if (notebook.ready) { setActive(notebook.add()); setFilter('all'); setQuery(''); setDrawer(false) } }
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => { if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'n') { event.preventDefault(); add() } }
     window.addEventListener('keydown', shortcut); return () => window.removeEventListener('keydown', shortcut)
@@ -53,7 +52,7 @@ export default function Notes() {
   const select = (id: string) => { setActive(id); setDrawer(false) }
   const signOut = () => { void notebook.flush().then(() => supabase?.auth.signOut()).catch(() => {}) }
   return <main className={`app ${theme} ${drawer ? 'drawer-open' : ''} ${focus ? 'focus-mode' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ '--sidebar': sidebar + 'px' } as React.CSSProperties}>
-    <NoteSidebar notes={notes} active={current?.id} select={select} query={query} search={setQuery} add={add} remove={note => { if (notebook.ready) setDeleting(note) }} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={signOut} status={notebook.status} error={notebook.error} retry={notebook.retry} ready={notebook.ready} filter={filter} setFilter={setFilter} change={notebook.change} userId={session?.user.id} tag={tag} setTag={setTag} tags={[...new Set(notebook.notes.flatMap(note => note.tags || []))]} restore={id => { notebook.restore(id); setFilter('all'); setActive(id) }} settings={() => setSettings(true)} tools={<><NotebookTools book={notebook.book} userId={session?.user.id} lang={lang} importNotes={notebook.import} ready={notebook.ready} /><OfflineApp lang={lang} /></>} />
+    <NoteSidebar notes={notes} active={current?.id} select={select} query={query} search={setQuery} add={add} remove={note => { if (notebook.ready) setDeleting(note) }} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={signOut} status={notebook.status} error={notebook.error} retry={notebook.retry} ready={notebook.ready} filter={filter} setFilter={setFilter} change={notebook.change} userId={session?.user.id} restore={id => { notebook.restore(id); setFilter('all'); setActive(id) }} settings={() => setSettings(true)} tools={<><NotebookTools book={notebook.book} userId={session?.user.id} lang={lang} importNotes={notebook.import} ready={notebook.ready} /><OfflineApp lang={lang} /></>} />
     <button className="scrim" tabIndex={-1} aria-hidden="true" onClick={() => setDrawer(false)} />
     <NoteEditor note={current} t={copy[lang]} lang={lang} font={font} setFont={setFont} rich={rich} setRich={setRich} update={body => { if (current) notebook.update(current.id, body) }} add={add} openMenu={() => { setFocus(false); setDrawer(true) }} change={patch => { if (current) notebook.change(current.id, patch) }} userId={session?.user.id} focus={focus} setFocus={setFocus} readOnly={notebook.readOnly} />
     <DeleteNoteDialog note={deleting} lang={lang} cancel={() => setDeleting(undefined)} confirm={notebook.remove} />
