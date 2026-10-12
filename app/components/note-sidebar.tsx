@@ -18,7 +18,7 @@ export function NoteSidebar(p: Props) {
   }, [])
   const f = featureCopy[p.lang]
   const state = p.status === 'error' ? 'error' : ['loading', 'saving'].includes(p.status) ? 'busy' : 'ok'
-  return <aside className="sidebar"><div className="brand"><span className="mark">✳</span><span>papertrail</span><button className="icon-btn" onClick={() => p.setTheme(p.theme === 'paper' ? 'sun' : p.theme === 'sun' ? 'night' : 'paper')} aria-label={p.t.theme} title={p.t.theme}>◐</button></div>
+  return <aside className="sidebar"><div className="brand"><span className="mark">✳</span><span>Papertrail</span><button className="icon-btn" onClick={() => p.setTheme(p.theme === 'paper' ? 'sun' : p.theme === 'sun' ? 'night' : 'paper')} aria-label={p.t.theme} title={p.t.theme}>◐</button></div>
     <label className="search"><span aria-hidden="true">⌕</span><input ref={searchInput} aria-label={p.t.search} placeholder={p.t.search} value={p.query} onChange={event => p.search(event.target.value)} /><kbd>⌘K</kbd></label>
     <nav className="note-filters" aria-label={p.t.notes}>{(['all','pinned','archive','trash'] as NoteFilter[]).map(filter => <button key={filter} aria-pressed={filter === p.filter} onClick={() => p.setFilter(filter)}>{filter === 'all' ? p.t.all : f[filter]}</button>)}</nav>
     <div className="sort-tools"><select aria-label={f.sort} value={p.sort} onChange={event => p.setSort(event.target.value as NoteSort)}>{(['updated','created','title'] as NoteSort[]).map(sort => <option key={sort} value={sort}>{f[sort]}</option>)}</select><select aria-label={f.tagFilter} value={p.tag} onChange={event => p.setTag(event.target.value)}><option value="">{f.tagFilter}</option>{p.tags.map(tag => <option key={tag}>{tag}</option>)}</select></div>

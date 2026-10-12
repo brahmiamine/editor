@@ -3,7 +3,7 @@ import Link from 'next/link'
 export default function Landing() {
   return <main className="landing">
     <nav className="landing-nav">
-      <span className="mark">✳</span><b>papertrail</b>
+      <span className="mark">✳</span><b>Papertrail</b>
       <Link className="landing-login" href="/auth/">Connexion</Link>
       <Link className="landing-cta" href="/notes/">Essayer sans compte</Link>
     </nav>
@@ -20,7 +20,7 @@ export default function Landing() {
       </div>
       <div className="landing-preview" aria-hidden="true">
         <div className="preview-side">
-          <div className="preview-brand"><span className="mark">✳</span> papertrail</div>
+          <div className="preview-brand"><span className="mark">✳</span> Papertrail</div>
           <div className="preview-note selected">Idées de voyage<small>Lisbonne, Porto, Faro…</small></div>
           <div className="preview-note">Courses<small>Pain, citrons, café</small></div>
           <div className="preview-note">Réunion lundi<small>Points à aborder</small></div>

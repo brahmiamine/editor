@@ -17,5 +17,5 @@ export default function SharedNote() {
     void supabase.functions.invoke('papertrail-share', { body: { token } }).then(({ data, error }) => { if (!cancelled) { if (error || typeof data?.body !== 'string') setFailed(true); else setBody(data.body) } })
     return () => { cancelled = true }
   }, [])
-  return <main className="shared-note" dir={lang === 'ar' ? 'rtl' : 'ltr'}><Link href="/notes/">papertrail</Link>{failed ? <p role="alert">{featureCopy[lang].emptyShared}</p> : body === undefined ? <p role="status">{featureCopy[lang].loading}</p> : <RichView markdown={body} editable={false} font={18} label={featureCopy[lang].share} lang={lang} />}</main>
+  return <main className="shared-note" dir={lang === 'ar' ? 'rtl' : 'ltr'}><Link href="/notes/">Papertrail</Link>{failed ? <p role="alert">{featureCopy[lang].emptyShared}</p> : body === undefined ? <p role="status">{featureCopy[lang].loading}</p> : <RichView markdown={body} editable={false} font={18} label={featureCopy[lang].share} lang={lang} />}</main>
 }

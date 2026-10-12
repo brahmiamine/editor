@@ -79,7 +79,7 @@ export default function AuthForm() {
 
   return <main className={`auth-page ${theme}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang}><div className="auth-card">
     <select aria-label={copy[lang].language} value={lang} onChange={event => { const next = event.target.value as Language; setLang(next); try { const saved = JSON.parse(localStorage.getItem('papertrail-preferences') || '{}'); localStorage.setItem('papertrail-preferences', JSON.stringify({ ...saved, lang: next })) } catch {} }}><option value="fr">Français</option><option value="en">English</option><option value="ar">العربية</option></select>
-    <Link className="auth-brand" href="/"><span className="mark">✳</span> papertrail</Link>
+    <Link className="auth-brand" href="/"><span className="mark">✳</span> Papertrail</Link>
     <h1>{titles[mode]}</h1><p className="auth-intro">{t.authIntro}</p>
     <form onSubmit={submit}>
       {mode !== 'update' && <input aria-label={t.email} type="email" autoComplete="email" placeholder={t.email} value={email} onChange={e => setEmail(e.target.value)} required />}
