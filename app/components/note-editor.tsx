@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Download, Ellipsis, Menu, PanelLeftClose, PanelLeftOpen, Pilcrow, Plus, Search, Type, X } from 'lucide-react'
 import { downloadText, exportNote, formatText, noteTitle, wordCount, type Note, type changeNote } from '../lib/notes'
 import { embedAttachments } from '../lib/attachments'
-import { detectNoteJson, looksLikeMarkdown } from '../lib/markdown'
+import { detectNoteJson } from '../lib/markdown'
 import { featureCopy, type copy, type Language } from '../lib/i18n'
 import { FormatToolbar } from './format-toolbar'
 import { RichView } from './rich-view'
@@ -22,7 +22,6 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
   const f = featureCopy[lang]
   const text = note?.body ?? ''
   const json = detectNoteJson(text) !== null
-  const markdown = looksLikeMarkdown(text)
   useEffect(() => { setFontDraft(String(font)) }, [font])
   useEffect(() => { setPreview(false); setCodeNote(detectNoteJson(note?.body || '') !== null); setQuery(''); setFinding(false); setFailure('') }, [note?.id])
   useEffect(() => { if (json) setCodeNote(true) }, [json])
@@ -80,7 +79,7 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
     <header>
       <button className="menu-btn" onClick={openMenu} aria-label={t.menu}><Menu size={22} aria-hidden="true" /></button>
       <div className="crumb">{t.all} <ChevronRight size={13} aria-hidden="true" /> {note?.body.trim() || note?.heading?.trim() ? note.title : t.untitled}</div>
-      {(json || markdown || preview) && <span className="detect">{json ? t.json : markdown ? t.markdown : ''}<button onClick={() => setPreview(!preview)}>{preview ? t.edit : t.preview}</button></span>}
+      {(json || preview) && <span className="detect">{json ? t.json : ''}<button onClick={() => setPreview(!preview)}>{preview ? t.edit : t.preview}</button></span>}
       <button className="more-btn" disabled={!note} onClick={() => setMore(!more)} aria-expanded={more} aria-label={t.more}><Ellipsis size={18} aria-hidden="true" /></button>
       <div className={`actions ${more ? 'open' : ''}`}>
         <button disabled={!note} onClick={() => void download('md')} aria-label=".md" title=".md"><Download size={15} aria-hidden="true" /> .md</button>
