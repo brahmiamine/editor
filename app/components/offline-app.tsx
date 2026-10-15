@@ -11,5 +11,5 @@ export function OfflineApp({ lang }: { lang: Language }) {
     window.addEventListener('beforeinstallprompt', offer)
     return () => window.removeEventListener('beforeinstallprompt', offer)
   }, [])
-  return install ? <button onClick={() => { void install.prompt().then(() => install.userChoice).then(() => setInstall(undefined)) }}>{featureCopy[lang].install}</button> : null
+  return install ? <button className="install-link" onClick={() => { void install.prompt().then(() => install.userChoice).then(() => setInstall(undefined)) }}>{featureCopy[lang].install}</button> : null
 }

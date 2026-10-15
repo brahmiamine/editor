@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import { changeNote, createNote, editNote, emptyNotebook, ensureFirstNote, expireTrash, importBackup, importGuestNotes, mergeRemote, parseNotebook, restoreNote, trashNote, type Note, type Notebook } from '../lib/notes'
+import { changeNote, createNote, editNote, emptyNotebook, ensureFirstNote, expireTrash, importBackup, importGuestNotes, mergeRemote, parseNotebook, reorderNotes, restoreNote, trashNote, type Note, type Notebook } from '../lib/notes'
 import { loadBook, readLocal, transferGuest, writeLocal } from '../lib/local-db'
 import { uploadAttachments } from '../lib/attachments'
 
@@ -158,6 +158,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
     add: () => { if (!ownsLock.current || loadedKey !== key) return ''; const note = createNote(); setBook(current => ({ ...current, notes: [note, ...current.notes], pending: [...current.pending, note.id] })); return note.id },
     update: (id: string, body: string) => { if (!ownsLock.current || loadedKey !== key || currentBook.current.notes.find(note => note.id === id)?.body === body) return; savingLocal.current = true; setStatus('saving'); setBook(current => editNote(current, id, body)) },
     change: (id: string, patch: Parameters<typeof changeNote>[2]) => { if (!ownsLock.current || loadedKey !== key) return; savingLocal.current = true; setStatus('saving'); setBook(current => changeNote(current, id, patch)) },
+    reorder: (ids: string[]) => { if (!ownsLock.current || loadedKey !== key) return; savingLocal.current = true; setStatus('saving'); setBook(current => reorderNotes(current, ids)) },
     remove: (id: string) => { if (ownsLock.current && loadedKey === key) setBook(current => trashNote(current, id)) },
     restore: (id: string) => { if (ownsLock.current && loadedKey === key) setBook(current => restoreNote(current, id)) },
     import: (raw: string) => { if (!ownsLock.current || loadedKey !== key) return; const validated = importBackup(emptyNotebook(), raw); setBook(current => ({ ...current, notes: [...validated.notes, ...current.notes], pending: [...new Set([...current.pending, ...validated.pending])] })) },

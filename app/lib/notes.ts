@@ -1,5 +1,5 @@
 export type NoteVersion = { body: string; at: number }
-export type Note = { id: string; title: string; body: string; updated: number; color: string; created?: number; pinned?: boolean; archived?: boolean; tags?: string[]; trashedAt?: number; history?: NoteVersion[]; revision?: number; conflictOf?: string; heading?: string }
+export type Note = { id: string; title: string; body: string; updated: number; color: string; created?: number; pinned?: boolean; archived?: boolean; tags?: string[]; trashedAt?: number; history?: NoteVersion[]; revision?: number; conflictOf?: string; heading?: string; order?: number }
 export type Notebook = { notes: Note[]; pending: string[]; deleted: string[] }
 export const colors = ['#e9b949', '#e4876b', '#8ebf9b', '#8da9d1', '#b59ad9']
 export const emptyNotebook = (): Notebook => ({ notes: [], pending: [], deleted: [] })
@@ -103,7 +103,12 @@ export function importGuestNotes(account: Notebook, guest: Notebook): Notebook {
 }
 export type NoteFilter = 'all' | 'pinned' | 'archive' | 'trash'
 export function visibleNotes(notes: Note[], filter: NoteFilter, query: string): Note[] {
-  return notes.filter(note => (filter === 'trash' ? !!note.trashedAt : !note.trashedAt && (filter === 'archive' ? note.archived : !note.archived) && (filter !== 'pinned' || note.pinned)) && (note.title + ' ' + note.body).toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updated - a.updated)
+  return notes.filter(note => (filter === 'trash' ? !!note.trashedAt : !note.trashedAt && (filter === 'archive' ? note.archived : !note.archived) && (filter !== 'pinned' || note.pinned)) && (note.title + ' ' + note.body).toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || Number(a.order !== undefined) - Number(b.order !== undefined) || (a.order ?? 0) - (b.order ?? 0) || (b.created ?? b.updated) - (a.created ?? a.updated))
+}
+// Persist a manual order for the given ids (top to bottom); editing a note never reorders.
+export function reorderNotes(book: Notebook, ids: string[]): Notebook {
+  const now = Date.now()
+  return { ...book, notes: book.notes.map(note => ids.includes(note.id) ? { ...note, order: ids.indexOf(note.id), updated: Math.max(now, note.updated + 1) } : note), pending: [...new Set([...book.pending, ...ids])] }
 }
 export function backupNotebook(book: Notebook) { return JSON.stringify({ format: 'papertrail', version: 1, exportedAt: new Date().toISOString(), notes: book.notes, pending: [], deleted: [] }, null, 2) }
 export function importBackup(book: Notebook, raw: string) {

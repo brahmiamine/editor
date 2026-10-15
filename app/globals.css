@@ -263,3 +263,7 @@ mark{background:var(--accent);color:var(--ink);border-radius:2px}
 .sidebar-bottom .filter-link[aria-pressed="true"]{color:var(--ink);font-weight:600}
 .note-title{color:var(--ink)}
 .note-title::placeholder{color:var(--muted)}
+.note-row.dragging{opacity:.4}
+.note-row[draggable="true"]{cursor:grab}
+.install-link{align-self:flex-start;padding:4px 8px;font-size:11px;color:var(--muted);text-align:start}
+.install-link:hover{color:var(--ink)}
