@@ -1,6 +1,6 @@
 export const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 // An empty NEXT_PUBLIC_API_URL disables accounts: the notebook then stays on this device only.
-export const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'https://papertrail.clubika.com').replace(/\/+$/, '')
+export const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'https://papertrail.clubika.com/api').replace(/\/+$/, '')
 export const sessionKey = 'papertrail-session'
 export type User = { id: string; email: string }
 export type Session = { token: string; user: User }

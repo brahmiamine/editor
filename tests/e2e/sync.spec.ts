@@ -17,7 +17,7 @@ test('guest notes and images upload on login, retry conflicts and download on a 
       const reply = (status: number, json?: unknown) => route.fulfill({ status, headers: cors, ...(json === undefined ? {} : { json }) })
       if (method === 'OPTIONS') { await reply(204); return }
       if (offline) { await route.abort('internetdisconnected'); return }
-      const [resource, key] = url.pathname.split('/').filter(Boolean)
+      const [resource, key] = url.pathname.replace(/^\/api/, '').split('/').filter(Boolean)
       if (resource === 'auth') {
         if (key === 'config') await reply(200, { emailEnabled: false, magicLink: false })
         else if (key === 'login') await reply(200, { token: 'test-token', user })

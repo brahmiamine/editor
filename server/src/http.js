@@ -1,4 +1,6 @@
 import { createServer as createHttpServer } from 'node:http'
+import { readFile, stat } from 'node:fs/promises'
+import { extname, resolve, sep } from 'node:path'
 
 export class HttpError extends Error {
   constructor(status, message, code = undefined) {
@@ -82,7 +84,49 @@ export const clientIp = (req) => {
   return forwarded.at(-1) || req.socket.remoteAddress || 'unknown'
 }
 
-export function createServer({ router, allowedOrigins, bodyLimit = 1024 * 1024, logger = console }) {
+const TYPES = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
+  '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+  '.woff': 'font/woff', '.map': 'application/json; charset=utf-8',
+}
+// Fichiers au nom haché : cache longue durée. Tout le reste (pages, sw.js, manifeste) est revalidé.
+const IMMUTABLE = /\/(assets|_next\/static)\//
+
+/** Sert le site compilé (dossier `root`) : index.html dans les dossiers, 404.html si présent. */
+async function serveStatic(root, pathname, send) {
+  let path
+  try { path = decodeURIComponent(pathname) } catch { return send(400, { error: 'bad_request', message: 'Adresse invalide.' }) }
+  if (path.includes('\0')) return send(400, { error: 'bad_request', message: 'Adresse invalide.' })
+  const base = resolve(root)
+  const lookup = async (relative) => {
+    const file = resolve(base, '.' + relative)
+    if (file !== base && !file.startsWith(base + sep)) return null
+    const info = await stat(file).catch(() => null)
+    return info ? { file, info } : null
+  }
+  let found = await lookup(path)
+  if (found?.info.isDirectory()) {
+    if (!path.endsWith('/')) return send(308, null, { Location: path + '/' })
+    found = await lookup(path + 'index.html')
+  }
+  if (!found || !found.info.isFile()) {
+    const missing = await lookup('/404.html')
+    if (missing?.info.isFile()) return send(404, await readFile(missing.file), { 'Content-Type': TYPES['.html'] })
+    return send(404, { error: 'not_found', message: 'Introuvable.' })
+  }
+  return send(200, await readFile(found.file), {
+    'Content-Type': TYPES[extname(found.file).toLowerCase()] || 'application/octet-stream',
+    'Cache-Control': IMMUTABLE.test(path) ? 'public, max-age=31536000, immutable' : 'no-cache',
+  })
+}
+
+/**
+ * L'API répond sous `/api/...` (et à la racine si aucun site n'est servi). Avec `staticDir`, tout ce qui
+ * n'est pas `/api` est servi comme fichier du site.
+ */
+export function createServer({ router, allowedOrigins, bodyLimit = 1024 * 1024, logger = console, staticDir = '' }) {
   const origins = new Set(allowedOrigins)
 
   return createHttpServer(async (req, res) => {
@@ -118,7 +162,16 @@ export function createServer({ router, allowedOrigins, bodyLimit = 1024 * 1024, 
     if (req.method === 'OPTIONS') return send(204)
 
     const url = new URL(req.url || '/', 'http://localhost')
-    const found = router.match(req.method, url.pathname)
+    const isApi = url.pathname === '/api' || url.pathname.startsWith('/api/')
+    if (staticDir && !isApi) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { error: 'method_not_allowed', message: 'Méthode non autorisée.' })
+      const page = (status, body, extra = {}) => send(status, body, { 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'strict-origin-when-cross-origin', ...extra })
+      return serveStatic(staticDir, url.pathname, page).catch((error) => {
+        logger.error(`${req.method} ${url.pathname}`, error)
+        send(500, { error: 'server_error', message: 'Erreur serveur.' })
+      })
+    }
+    const found = router.match(req.method, isApi ? url.pathname.slice(4) || '/' : url.pathname)
     if (!found) return send(404, { error: 'not_found', message: 'Introuvable.' })
     if (found === 'method_not_allowed') return send(405, { error: 'method_not_allowed', message: 'Méthode non autorisée.' })
 

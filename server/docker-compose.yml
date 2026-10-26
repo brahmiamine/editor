@@ -1,10 +1,12 @@
 # Déploiement sur le VPS : `docker compose up -d --build` depuis ce dossier, avec un fichier .env (voir .env.example).
-# L'API rejoint le réseau Docker du reverse proxy (Caddy) et lit MariaDB via le socket Unix de l'hôte.
+# Le conteneur sert le site (/) et l'API (/api) ; il rejoint le réseau Docker de Caddy et lit MariaDB via le socket Unix de l'hôte.
 name: editor-api
 
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     container_name: editor-api
     restart: unless-stopped
     env_file: .env
