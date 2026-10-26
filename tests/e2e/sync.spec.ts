@@ -9,7 +9,7 @@ test('guest notes and images upload on login, retry conflicts and download on a 
   const images = new Map<string, Buffer>()
   let failWrites = false
   let offline = false
-  const api = '**/editor-api.clubika.com/**'
+  const api = '**/papertrail.clubika.com/**'
   async function boundary(ctx: BrowserContext) {
     await ctx.route(api, async route => {
       const request = route.request(), url = new URL(request.url()), method = request.method()

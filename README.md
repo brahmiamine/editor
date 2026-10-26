@@ -50,10 +50,10 @@ The browser never talks to the database: it calls the API in `server/` (Node.js 
 - Images: PNG/JPEG/GIF/WebP, 1 MB maximum, private per account.
 - E-mail features (password reset, magic link) appear only when the API has `SMTP_HOST` configured. Links carry a single-use token (1 hour) in the URL fragment.
 - CORS only allows the origins listed in `ALLOWED_ORIGINS`.
-- Configuration: copy `server/.env.example` to `server/.env`. Deploy on the VPS with `cd server && docker compose up -d --build`; Caddy serves it at `https://editor-api.clubika.com`.
+- Configuration: copy `server/.env.example` to `server/.env`. Deploy on the VPS with `cd server && docker compose up -d --build`; Caddy serves it at `https://papertrail.clubika.com`.
 
 ## Deployment
 
-The Pages workflow runs unit tests, static build, typecheck and Playwright before deployment. The build targets `https://editor-api.clubika.com` by default; set `NEXT_PUBLIC_API_URL` (`.env.local` or a repository variable) to use another API. Never commit `.env` files or database credentials.
+The Pages workflow runs unit tests, static build, typecheck and Playwright before deployment. The build targets `https://papertrail.clubika.com` by default; set `NEXT_PUBLIC_API_URL` (`.env.local` or a repository variable) to use another API. Never commit `.env` files or database credentials.
 
 Implementation lives in `app/components` (UI), `app/hooks` (Auth/autosave), `app/lib` (note transformations, IndexedDB, attachments, safe rendering), and `server` (API and MariaDB schema). No new editor, persistence or UI library was added; Playwright is a development-only browser-test dependency.
