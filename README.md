@@ -57,3 +57,13 @@ The browser never talks to the database: it calls the API in `server/` (Node.js 
 The Pages workflow runs unit tests, static build, typecheck and Playwright before deployment. The build targets `https://papertrail.clubika.com/api` by default; set `NEXT_PUBLIC_API_URL` (`.env.local` or a repository variable) to use another API. Never commit `.env` files or database credentials.
 
 Implementation lives in `app/components` (UI), `app/hooks` (Auth/autosave), `app/lib` (note transformations, IndexedDB, attachments, safe rendering), and `server` (API and MariaDB schema). No new editor, persistence or UI library was added; Playwright is a development-only browser-test dependency.
+
+## Automatic deployment
+
+Every commit pushed to `main` updates the app:
+
+1. **GitHub Actions** runs the tests (and publishes the GitHub Pages build).
+2. **The server** (`papertrail.clubika.com`) checks every minute whether `main` changed (`app-deploy.timer`, script `~/deploy/auto-deploy.sh`): it pulls the commit, rebuilds the Docker image (`docker compose up -d --build` in `server/`), probes `/api/health`, and **automatically rolls back to the previous version** if the new build fails or does not answer.
+3. The log is `~/deploy/deploy.log` on the server; a rejected commit is not retried until a new commit arrives.
+
+It usually goes live 1 to 3 minutes after the push.

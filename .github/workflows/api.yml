@@ -1,7 +1,7 @@
 name: API tests
 on:
-  push: { branches: [main], paths: ['server/**'] }
-  pull_request: { paths: ['server/**'] }
+  push: { branches: [main] }
+  pull_request:
 jobs:
   api:
     runs-on: ubuntu-latest
