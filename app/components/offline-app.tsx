@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { basePath } from '../supabase'
+import { basePath } from '../api'
 import { featureCopy, type Language } from '../lib/i18n'
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 export function OfflineApp({ lang }: { lang: Language }) {

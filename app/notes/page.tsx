@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '../supabase'
+import { auth } from '../api'
 import { copy, type Language } from '../lib/i18n'
 import { visibleNotes, type Note, type NoteFilter } from '../lib/notes'
 import { useSession } from '../hooks/use-session'
@@ -50,7 +50,7 @@ export default function Notes() {
     window.addEventListener('keydown', shortcut); return () => window.removeEventListener('keydown', shortcut)
   }, [notebook.ready])
   const select = (id: string) => { setActive(id); setDrawer(false) }
-  const signOut = () => { void notebook.flush().then(() => supabase?.auth.signOut()).catch(() => {}) }
+  const signOut = () => { void notebook.flush().then(() => auth.signOut()).catch(() => {}) }
   return <main className={`app ${theme} ${drawer ? 'drawer-open' : ''} ${focus ? 'focus-mode' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ '--sidebar': sidebar + 'px' } as React.CSSProperties}>
     <NoteSidebar notes={notes} active={current?.id} select={select} query={query} search={setQuery} add={add} remove={note => { if (notebook.ready) setDeleting(note) }} t={copy[lang]} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} width={sidebar} setWidth={setSidebar} email={session?.user.email} signOut={signOut} status={notebook.status} error={notebook.error} retry={notebook.retry} ready={notebook.ready} filter={filter} setFilter={setFilter} change={notebook.change} reorder={notebook.reorder} userId={session?.user.id} restore={id => { notebook.restore(id); setFilter('all'); setActive(id) }} settings={() => setSettings(true)} tools={<><NotebookTools book={notebook.book} userId={session?.user.id} lang={lang} importNotes={notebook.import} ready={notebook.ready} /><OfflineApp lang={lang} /></>} />
     <button className="scrim" tabIndex={-1} aria-hidden="true" onClick={() => setDrawer(false)} />

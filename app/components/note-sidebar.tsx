@@ -1,4 +1,4 @@
-import { basePath } from '../supabase'
+import { basePath } from '../api'
 import { useEffect, useRef, useState } from 'react'
 import { Archive, Asterisk, Languages, Pin, Plus, RotateCcw, Search, SunMoon, Trash2 } from 'lucide-react'
 import type { Note, changeNote } from '../lib/notes'

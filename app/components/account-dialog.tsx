@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { basePath, supabase } from '../supabase'
+import { apiUrl, auth, basePath } from '../api'
 import { deleteLocal } from '../lib/local-db'
-import { featureCopy, sharedAccountCopy, type Language } from '../lib/i18n'
+import { featureCopy, type Language } from '../lib/i18n'
 
 export function AccountDialog({ userId, email, lang, open, close }: { userId?: string; email?: string; lang: Language; open: boolean; close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -13,23 +13,19 @@ export function AccountDialog({ userId, email, lang, open, close }: { userId?: s
   const t = featureCopy[lang]
   useEffect(() => { if (open) dialog.current?.showModal(); else { dialog.current?.close(); setPassword(''); setConfirmation(''); setDeletion(''); setMessage('') } }, [open])
   async function changePassword() {
-    if (!supabase) return
+    if (!apiUrl) return
     if (password !== confirmation) { setMessage(t.mismatch); return }
     setBusy(true)
-    try { const { error } = await supabase.auth.updateUser({ password }); if (error) throw error; setMessage(t.done); setPassword(''); setConfirmation('') } catch { setMessage(t.failure) } finally { setBusy(false) }
+    try { await auth.updatePassword(password); setMessage(t.done); setPassword(''); setConfirmation('') } catch { setMessage(t.failure) } finally { setBusy(false) }
   }
   async function deleteAccount() {
-    if (!supabase || !userId) return
+    if (!apiUrl || !userId) return
     setBusy(true); setMessage('')
     try {
-      const { error } = await supabase.functions.invoke('papertrail-account', { body: { confirmation: 'DELETE' } })
-      if (error) {
-        if ('context' in error && error.context instanceof Response) { const details = await error.context.json().catch(() => ({})); if (details.error === 'shared_account') { setMessage(sharedAccountCopy[lang]); return } }
-        throw error
-      }
+      await auth.deleteAccount()
       await deleteLocal('books', 'papertrail-notes:' + userId)
       localStorage.removeItem('papertrail-notes:' + userId)
-      await supabase.auth.signOut({ scope: 'local' })
+      auth.forget()
       location.replace(basePath + '/notes/')
     } catch { setMessage(t.failure) } finally { setBusy(false) }
   }

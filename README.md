@@ -1,6 +1,6 @@
 # Papertrail
 
-Next.js 16 static-export notes app for GitHub Pages, with Supabase Auth, private notes and image storage.
+Next.js 16 static-export notes app for GitHub Pages, with its own Node.js + MariaDB API (`server/`) for accounts, private notes and image storage.
 
 ## Run and verify
 
@@ -10,13 +10,13 @@ Preview using `npm start`. The development server intentionally does not registe
 
 Checks:
 
-- `npm test`: Node regression tests for notes, conflicts, backup validation, safe Markdown, images and Edge Function authorization.
+- `npm test`: Node regression tests for notes, conflicts, backup validation, safe Markdown and images.
+- `cd server && npm test`: API integration tests against a real MariaDB test database (`TEST_DB_NAME`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, plus `TEST_DB_HOST` or `TEST_DB_SOCKET`).
 - `npm run typecheck`: Next.js/client TypeScript.
-- `deno check supabase/functions/papertrail-account/index.ts supabase/functions/papertrail-share/index.ts`: the separate Edge runtime.
 - `npx playwright install chromium`, then `npm run test:e2e` after a build: isolated browser flows against the actual static export.
 - `GITHUB_ACTIONS=true npm run build && GITHUB_ACTIONS=true npm run test:e2e`: GitHub Pages `/editor` paths, including offline reload.
 
-Browser tests use disposable profiles, not the user's browser data. The sync test doubles only the Supabase HTTP boundary; authentication UI, IndexedDB, guest transfer, conflict handling and the save queue remain real.
+Browser tests use disposable profiles, not the user's browser data. The sync test doubles only the API HTTP boundary; authentication UI, IndexedDB, guest transfer, conflict handling and the save queue remain real.
 
 ## Features and data flow
 
@@ -31,27 +31,29 @@ Browser tests use disposable profiles, not the user's browser data. The sync tes
 - Themes and French/English/Arabic UI, including Auth, account dialogs, errors and RTL layout. Text size uses a numeric field.
 - Markdown WYSIWYG tools: headings, bold, italic, underline, strikethrough, lists, tasks, tables, links, quotes, code, dividers and native undo/redo.
 - JSON and code syntax coloring in preview; switch back to edit the original source. User-supplied HTML is escaped, link/image protocols are checked.
-- Images via file, URL, clipboard or drop: PNG/JPEG/GIF/WebP, 1 MB maximum per file. Large dimensions are reduced to 1600 px for non-animated images. Captions and width are editable. Files use IndexedDB blobs and private Supabase Storage; Markdown stores stable attachment IDs, never expiring signed URLs. Legacy/backup inline images remain compatible.
+- Images via file, URL, clipboard or drop: PNG/JPEG/GIF/WebP, 1 MB maximum per file. Large dimensions are reduced to 1600 px for non-animated images. Captions and width are editable. Files use IndexedDB blobs and a private per-account table in MariaDB; Markdown stores stable attachment IDs, never expiring signed URLs. Legacy/backup inline images remain compatible.
 - Cloud images are fetched with authenticated requests and cached for offline viewing. Automatic orphan-image deletion is intentionally disabled: a client-side stale snapshot cannot prove an image is unused across devices. Account deletion removes that account's image folder.
-- Installable PWA caches only the static shell and same-origin build assets. It never caches Supabase API responses or authentication pages. First online installation is required before offline launch.
-- Offline account access uses the last locally stored Auth identity even when its JWT expires. This permits reading/editing only that device's account cache; no server authorization is bypassed. Explicit sign-out removes access to that identity, and reconnect asks Supabase for the current session again.
-- Account settings change passwords and delete accounts with a typed confirmation. On a dedicated Papertrail project, deletion revokes sessions, removes that account's cloud images and deletes its Auth user (notes/shares cascade). A service-role-only preflight blocks global Auth deletion whenever the project has foreign-app user dependencies, including the currently shared project. A racing row-count check would not safely protect other apps.
+- Installable PWA caches only the static shell and same-origin build assets. It never caches API responses or authentication pages. First online installation is required before offline launch.
+- Offline account access uses the last locally stored identity even when its server session has expired. This permits reading/editing only that device's account cache; no server authorization is bypassed. Explicit sign-out removes access to that identity, and reconnect asks the API for the current session again.
+- Account settings change passwords and delete accounts with a typed confirmation. Deletion removes the account's sessions, notes, images and shares in one cascading database delete.
 - Read-only sharing creates a seven-day snapshot, with a high-entropy token stored only as its SHA-256 hash. The owner can revoke links. The link token lives in the URL fragment, not a query string. Anyone with the link can read the snapshot; future edits do not modify it.
 
 Shortcuts: Ctrl/Cmd+K searches notes, Ctrl/Cmd+F searches the open note, Ctrl/Cmd+Alt+N creates a note, Escape exits focus/search. Formatting uses the browser's native commands.
 
-## Supabase setup and security
+## API, database and security
 
-For a new project, apply `supabase/schema.sql` then `supabase/features.sql`. These feature changes were applied to the configured project through the Supabase plugin. The feature SQL is a setup record, not a repeatable migration runner.
+The browser never talks to the database: it calls the API in `server/` (Node.js 24, no framework) which stores everything in MariaDB.
 
-Deploy `supabase/functions/papertrail-account/index.ts` with JWT verification enabled, and `papertrail-share/index.ts` with gateway JWT verification disabled: the latter deliberately authorizes public read-only access with its unguessable token and expiry. Neither accepts a caller-supplied deletion target.
-
-Notes and share-management tables use ownership RLS; anonymous table privileges are revoked. The image bucket is private and restricted to `userId/assetId`. A narrowly privileged helper in the non-exposed `papertrail_private` schema checks that the caller's signed session still exists, preventing continued note/share-management/image access after sign-out/account deletion. Service-role credentials exist only inside Supabase Edge Functions, never the browser build.
-
-See `supabase/AUTH.md` for email delivery/redirect configuration. Email receipt and a real destructive account deletion are not exercised by automated tests. No AI or live collaborative editing is included.
+- Schema: `server/schema.sql`, applied automatically on API start (idempotent). Tables: `users`, `sessions`, `email_tokens`, `notes`, `note_images`, `note_shares`.
+- Accounts: e-mail + password (bcrypt). Sessions are random opaque Bearer tokens (60 days) stored only as SHA-256 hashes; logout and password change revoke them. Login and sign-up are rate limited.
+- Every query is scoped to the authenticated `user_id`. Notes use a server-side `revision` for optimistic concurrency: a stale write gets `409` and the client keeps both versions.
+- Images: PNG/JPEG/GIF/WebP, 1 MB maximum, private per account.
+- E-mail features (password reset, magic link) appear only when the API has `SMTP_HOST` configured. Links carry a single-use token (1 hour) in the URL fragment.
+- CORS only allows the origins listed in `ALLOWED_ORIGINS`.
+- Configuration: copy `server/.env.example` to `server/.env`. Deploy on the VPS with `cd server && docker compose up -d --build`; Caddy serves it at `https://editor-api.clubika.com`.
 
 ## Deployment
 
-The Pages workflow runs unit tests, static build, typecheck and Playwright before deployment. Configure repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Never commit `.env.local` or service-role credentials.
+The Pages workflow runs unit tests, static build, typecheck and Playwright before deployment. The build targets `https://editor-api.clubika.com` by default; set `NEXT_PUBLIC_API_URL` (`.env.local` or a repository variable) to use another API. Never commit `.env` files or database credentials.
 
-Implementation lives in `app/components` (UI), `app/hooks` (Auth/autosave), `app/lib` (note transformations, IndexedDB, attachments, safe rendering), and `supabase/functions` (privileged account deletion and token-based share reading). No new editor, persistence or UI library was added; Playwright is a development-only browser-test dependency.
+Implementation lives in `app/components` (UI), `app/hooks` (Auth/autosave), `app/lib` (note transformations, IndexedDB, attachments, safe rendering), and `server` (API and MariaDB schema). No new editor, persistence or UI library was added; Playwright is a development-only browser-test dependency.

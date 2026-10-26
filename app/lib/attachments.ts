@@ -1,5 +1,5 @@
 import { readLocal, writeLocal } from './local-db.ts'
-import { supabase } from '../supabase'
+import { api, apiUrl, ApiError } from '../api'
 import { MAX_IMAGE_BYTES, safeImageUrl } from './media.ts'
 
 export const attachmentIds = (text: string) => [...new Set(text.match(/attachment:[0-9a-f-]{36}/gi)?.map(value => value.slice(11)) || [])]
@@ -21,18 +21,17 @@ export async function storeImage(file: File) {
 export async function attachmentBlob(id: string, userId?: string) {
   const cached = await readLocal<Blob>('assets', id)
   if (cached) return cached
-  if (!supabase || !userId) throw new Error('imageRead')
-  const { data, error } = await supabase.storage.from('note-images').download(`${userId}/${id}`)
-  if (error) throw error
+  if (!apiUrl || !userId) throw new Error('imageRead')
+  const data = await api<Blob>('GET', '/images/' + id, undefined, { blob: true })
   await writeLocal('assets', id, data)
   return data
 }
 export async function uploadAttachments(text: string, userId: string) {
-  if (!supabase) return
+  if (!apiUrl) return
   for (const id of attachmentIds(text)) {
     const blob = await attachmentBlob(id, userId)
-    const { error } = await supabase.storage.from('note-images').upload(`${userId}/${id}`, blob, { contentType: blob.type, upsert: false })
-    if (error && !['409', 'Duplicate'].includes(String(error.statusCode))) throw error
+    // Images are immutable: 409 means another device already uploaded this one.
+    try { await api('PUT', '/images/' + id, blob) } catch (cause) { if (!(cause instanceof ApiError && cause.status === 409)) throw cause }
   }
 }
 export async function embedAttachments(text: string, userId?: string) {

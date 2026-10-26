@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../supabase'
+import { api, apiUrl, ApiError } from '../api'
 import { changeNote, createNote, editNote, emptyNotebook, ensureFirstNote, expireTrash, importBackup, importGuestNotes, mergeRemote, parseNotebook, reorderNotes, restoreNote, trashNote, type Note, type Notebook } from '../lib/notes'
 import { loadBook, readLocal, transferGuest, writeLocal } from '../lib/local-db'
 import { uploadAttachments } from '../lib/attachments'
@@ -93,7 +93,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
         await localQueue.current
         if (generation.current !== version) return
         if (!navigator.onLine) { setStatus('offline'); return }
-        if (!userId || !supabase) { setStatus('local'); return }
+        if (!userId || !apiUrl) { setStatus('local'); return }
         setStatus('saving'); setError('')
         const signal = loadController.current?.signal
         await navigator.locks.request('papertrail:papertrail-notes', { ifAvailable:true }, async guestLock => {
@@ -106,12 +106,11 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
           currentBook.current = next; setBook(next)
         })
         if (generation.current !== version) return
-        const data = []
+        const data: { id: string; title: string; body: string; color: string; metadata: Record<string, unknown>; revision: number; updated_at: string }[] = []
         for (let offset = 0; ; offset += 1000) {
-          const response = await supabase.from('notes').select('*').eq('user_id', userId).order('id').range(offset, offset + 999)
-          if (response.error) throw response.error
-          data.push(...response.data)
-          if (response.data.length < 1000) break
+          const page = await api<typeof data>('GET', '/notes?offset=' + offset)
+          data.push(...page)
+          if (page.length < 1000) break
         }
         if (generation.current !== version) return
         remoteGeneration.current = version
@@ -124,25 +123,22 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
         for (const note of merged.notes.filter(value => merged.pending.includes(value.id))) {
           await uploadAttachments(note.body + '\n' + (note.history || []).map(value => value.body).join('\n'), userId)
           const { id, body, title, color, updated, revision, ...metadata } = note
-          const row = { id, user_id: userId, title, body, color, updated_at: new Date(updated).toISOString(), metadata }
-          const result = revision === undefined
-            ? await supabase.from('notes').insert(row).select('revision').single()
-            : await supabase.from('notes').update(row).eq('id', id).eq('user_id', userId).eq('revision', revision).select('revision').maybeSingle()
-          if (result.error) {
-            if (result.error.code === '23505') { setRetry(value => value + 1); return }
-            throw result.error
+          const row = { id, title, body, color, updated_at: new Date(updated).toISOString(), metadata }
+          let nextRevision: number
+          try { ({ revision: nextRevision } = revision === undefined ? await api<{ revision: number }>('POST', '/notes', row) : await api<{ revision: number }>('PUT', '/notes/' + id, { ...row, revision })) }
+          catch (cause) {
+            // Another device created or changed this note: fetch again so both versions are kept.
+            if (cause instanceof ApiError && cause.status === 409) { setRetry(value => value + 1); return }
+            throw cause
           }
-          if (!result.data) { setRetry(value => value + 1); return }
           if (generation.current !== version) return
-          const nextRevision = result.data.revision
           setBook(current => ({ ...current, notes: current.notes.map(value => value.id === id ? { ...value, revision: nextRevision } : value), pending: current.pending.filter(value => value !== id || current.notes.find(n => n.id === id)?.updated !== updated) }))
         }
         if (merged.deleted.length) {
           for (const id of merged.deleted) {
             const remoteNote = remote.find(note => note.id === id)
             if (remoteNote?.trashedAt && Date.now() - remoteNote.trashedAt >= 30 * 86400000) {
-              const { error } = await supabase.from('notes').delete().eq('id', id).eq('user_id', userId).eq('revision', remoteNote.revision)
-              if (error) throw error
+              await api('DELETE', '/notes/' + id + '?revision=' + remoteNote.revision)
             }
           }
           setBook(current => ({ ...current, deleted: current.deleted.filter(id => !merged.deleted.includes(id)) }))

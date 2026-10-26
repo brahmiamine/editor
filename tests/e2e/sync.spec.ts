@@ -4,48 +4,52 @@ test.use({ serviceWorkers: 'allow' })
 // Only the remote HTTP boundary is doubled: the app's Auth, IndexedDB, guest transfer and sync queue remain real.
 test('guest notes and images upload on login, retry conflicts and download on a fresh device', async ({ page, context, browser }, testInfo) => {
   const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-  const user = { id, aud: 'authenticated', role: 'authenticated', email: 'test@example.invalid', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() }
-  const jwt = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: id, role: 'authenticated', exp: Math.floor(Date.now()/1000) + 3600 })).toString('base64url'), 'signature'].join('.')
+  const user = { id, email: 'test@example.invalid' }
   const rows = new Map<string, Record<string, any>>()
   const images = new Map<string, Buffer>()
   let failWrites = false
   let offline = false
+  const api = '**/editor-api.clubika.com/**'
   async function boundary(ctx: BrowserContext) {
-    await ctx.route('**/auth/v1/**', async route => {
+    await ctx.route(api, async route => {
+      const request = route.request(), url = new URL(request.url()), method = request.method()
+      const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
+      const reply = (status: number, json?: unknown) => route.fulfill({ status, headers: cors, ...(json === undefined ? {} : { json }) })
+      if (method === 'OPTIONS') { await reply(204); return }
       if (offline) { await route.abort('internetdisconnected'); return }
-      const url = new URL(route.request().url())
-      await route.fulfill({ json: url.pathname.endsWith('/token') ? { access_token: jwt, refresh_token: 'test-refresh', token_type: 'bearer', expires_in: 3600, user } : user })
-    })
-    await ctx.route('**/rest/v1/notes**', async route => {
-      const request = route.request(), url = new URL(request.url())
-      const noteId = url.searchParams.get('id')?.replace(/^eq\./,'')
-      if (request.method() === 'GET') { await route.fulfill({ json: [...rows.values()] }); return }
-      if (failWrites) { await route.fulfill({ status: 503, json: { message: 'Temporary failure' } }); return }
-      const row = request.postDataJSON()
-      if (request.method() === 'POST') { if (rows.has(row.id)) { await route.fulfill({ status: 409, json: { code:'23505' } }); return } rows.set(row.id, { ...row, revision: 1 }); await route.fulfill({ json: { revision: 1 } }); return }
-      if (request.method() === 'PATCH') {
-        const current = noteId && rows.get(noteId)
-        if (!current || url.searchParams.get('revision') !== 'eq.' + current.revision) { await route.fulfill({ body: '', status: 200 }); return }
-        rows.set(row.id, { ...row, revision: current.revision + 1 }); await route.fulfill({ json: { revision: current.revision + 1 } }); return
+      const [resource, key] = url.pathname.split('/').filter(Boolean)
+      if (resource === 'auth') {
+        if (key === 'config') await reply(200, { emailEnabled: false, magicLink: false })
+        else if (key === 'login') await reply(200, { token: 'test-token', user })
+        else if (key === 'user') await reply(200, { user })
+        else await reply(204)
+        return
       }
-      await route.fulfill({ json: [] })
-    })
-    await ctx.route('**/storage/v1/**', async route => {
-      const request = route.request(), url = new URL(request.url())
-      if (url.pathname.includes('/object/list/')) { await route.fulfill({ json: [...images.keys()].map(name => ({ name:name.split('/').at(-1), created_at:new Date().toISOString() })) }); return }
-      const path = url.pathname.split('/note-images/')[1]
-      if (request.method() === 'POST') {
-        if (images.has(path)) { await route.fulfill({ status:409, json:{ message:'Asset already exists', statusCode:'409' } }); return }
-        let buffer = request.postDataBuffer()!
-        if (request.headers()['content-type']?.startsWith('multipart/form-data')) {
-          const form = await new Request('https://test.invalid', { method:'POST', headers:{ 'content-type':request.headers()['content-type'] }, body:Uint8Array.from(buffer).buffer }).formData()
-          const file = [...form.values()].find(value => typeof value !== 'string') as File
-          buffer = Buffer.from(await file.arrayBuffer())
+      if (resource === 'notes') {
+        if (method === 'GET') { await reply(200, url.searchParams.get('offset') === '0' || !url.searchParams.get('offset') ? [...rows.values()] : []); return }
+        if (failWrites) { await reply(503, { message: 'Temporary failure' }); return }
+        if (method === 'POST') {
+          const row = request.postDataJSON()
+          if (rows.has(row.id)) { await reply(409, { error: 'conflict' }); return }
+          rows.set(row.id, { ...row, revision: 1 }); await reply(201, { revision: 1 }); return
         }
-        images.set(path,buffer); await route.fulfill({ json:{ Key:path } }); return
+        if (method === 'PUT') {
+          const row = request.postDataJSON(), current = rows.get(key)
+          if (!current || row.revision !== current.revision) { await reply(409, { error: 'conflict' }); return }
+          const { revision, ...fields } = row
+          rows.set(key, { ...fields, id: key, revision: current.revision + 1 }); await reply(200, { revision: current.revision + 1 }); return
+        }
+        await reply(204); return
       }
-      if (request.method() === 'GET' && images.has(path)) { await route.fulfill({ body:images.get(path)!, contentType:'image/png' }); return }
-      await route.fulfill({ status:404, json:{ message:'Not found' } })
+      if (resource === 'images') {
+        if (method === 'PUT') {
+          if (images.has(key)) { await reply(409, { error: 'conflict' }); return }
+          images.set(key, request.postDataBuffer()!); await reply(201, { id: key }); return
+        }
+        if (method === 'GET' && images.has(key)) { await route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'image/png' }, body: images.get(key)! }); return }
+        await reply(404, { error: 'not_found' }); return
+      }
+      await reply(404, { error: 'not_found' })
     })
   }
   await boundary(context)
