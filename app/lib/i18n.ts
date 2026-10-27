@@ -9,6 +9,8 @@ export const featureCopy = {
 }
 export const editorCopy = {
   "fr": {
+    "mic": "Dictée vocale",
+    "micStop": "Arrêter la dictée",
     "image": "Image",
     "link": "Lien",
     "quote": "Citation",
@@ -27,6 +29,8 @@ export const editorCopy = {
     "invalidUrl": "Utilisez une URL HTTPS pour une image, HTTP ou HTTPS pour un lien."
   },
   "en": {
+    "mic": "Voice dictation",
+    "micStop": "Stop dictation",
     "image": "Image",
     "link": "Link",
     "quote": "Quote",
@@ -45,6 +49,8 @@ export const editorCopy = {
     "invalidUrl": "Use HTTPS for images, HTTP or HTTPS for links."
   },
   "ar": {
+    "mic": "الإملاء الصوتي",
+    "micStop": "إيقاف الإملاء",
     "image": "صورة",
     "link": "رابط",
     "quote": "اقتباس",

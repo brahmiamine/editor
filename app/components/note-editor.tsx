@@ -5,6 +5,7 @@ import { embedAttachments } from '../lib/attachments'
 import { detectNoteJson } from '../lib/markdown'
 import { featureCopy, type copy, type Language } from '../lib/i18n'
 import { FormatToolbar } from './format-toolbar'
+import { DictateButton } from './dictate-button'
 import { RichView } from './rich-view'
 type Props = { note?: Note; t: typeof copy.fr; lang: Language; font: number; setFont: (size: number) => void; rich: boolean; setRich: (rich: boolean) => void; update: (body: string) => void; add: () => void; openMenu: () => void; change: (patch: Parameters<typeof changeNote>[2]) => void; userId?: string; focus: boolean; setFocus: (value: boolean) => void; readOnly: boolean }
 
@@ -85,6 +86,7 @@ export function NoteEditor({ note, t, lang, font, setFont, rich, setRich, update
         <button disabled={!note} onClick={() => void download('md')} aria-label=".md" title=".md"><Download size={15} aria-hidden="true" /> .md</button>
         <button disabled={!note} onClick={() => void download('txt')} aria-label=".txt" title=".txt"><Download size={15} aria-hidden="true" /> .txt</button>
         <button disabled={!note || readonly} aria-pressed={rich} title={t.richMode} aria-label={t.richMode} onClick={() => { setCodeNote(false); setRich(!rich) }}><Type size={16} aria-hidden="true" /></button>
+        <DictateButton lang={lang} editor={area} disabled={!note || readonly || preview} />
         <button disabled={!note || readonly} aria-label={t.tidy} title={t.tidy} onClick={() => update(formatText(text))}><Pilcrow size={16} aria-hidden="true" /></button>
         <button className="sidebar-toggle" aria-pressed={focus} aria-label={focus ? f.exitFocus : f.focus} title={focus ? f.exitFocus : f.focus} onClick={() => setFocus(!focus)}>{focus ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}</button>
         <button disabled={!note} onClick={() => { setFinding(!finding); requestAnimationFrame(() => findInput.current?.focus()) }} aria-label={f.find}><Search size={16} aria-hidden="true" /></button>
