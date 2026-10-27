@@ -138,7 +138,7 @@ export function createServer({ router, allowedOrigins, bodyLimit = 1024 * 1024, 
     }
     if (origin && origins.has(origin)) {
       headers['Access-Control-Allow-Origin'] = origin
-      headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, If-Match'
+      headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, If-Match, X-Socket-Id'
       headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
       headers['Access-Control-Expose-Headers'] = 'ETag'
       headers['Access-Control-Max-Age'] = '600'

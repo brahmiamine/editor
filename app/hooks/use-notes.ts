@@ -4,6 +4,7 @@ import { api, apiUrl, ApiError } from '../api'
 import { changeNote, createNote, editNote, emptyNotebook, ensureFirstNote, expireTrash, importBackup, importGuestNotes, mergeRemote, parseNotebook, reorderNotes, restoreNote, trashNote, type Note, type Notebook } from '../lib/notes'
 import { loadBook, readLocal, transferGuest, writeLocal } from '../lib/local-db'
 import { uploadAttachments } from '../lib/attachments'
+import { listenRemoteChanges } from '../lib/realtime'
 
 export type SyncStatus = 'loading' | 'local' | 'saving' | 'synced' | 'offline' | 'error' | 'locked'
 export function useNotes(userId: string | undefined, sessionReady: boolean) {
@@ -37,7 +38,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
         let cached = editable ? await loadBook(key,controller.signal) : parseNotebook(JSON.stringify(await readLocal<Notebook>('books',key,controller.signal)) || localStorage.getItem(key))
         if (generation.current !== version) return
         if (userId && editable) {
-          await navigator.locks.request('papertrail:papertrail-notes', { ifAvailable:true }, async guestLock => {
+          await navigator.locks?.request('papertrail:papertrail-notes', { ifAvailable:true }, async guestLock => {
             if (!guestLock || controller.signal.aborted) return
             await loadBook('papertrail-notes',controller.signal)
             if (!controller.signal.aborted) cached = await transferGuest(key,controller.signal)
@@ -49,12 +50,15 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
         setLoadedKey(key); setStatus(editable ? navigator.onLine ? 'local' : 'offline' : 'locked')
       } catch (cause) { if (generation.current === version) { setStatus('error'); setError(cause instanceof Error ? cause.message : 'Storage unavailable') } }
     }
-    if (!navigator.locks) void load(false)
-    else lockQueue.current = lockQueue.current.catch(() => {}).then(async () => { await navigator.locks.request('papertrail:' + key, { ifAvailable:true }, async lock => {
+    // Signed-in tabs all write: the server is the source of truth and Socket.io tells the other tabs to sync.
+    // ponytail: the offline local cache is last-write-wins across tabs; guests keep the single-writer lock.
+    const hold = async (lock: unknown) => {
       if (controller.signal.aborted) return
       await load(!!lock)
       if (lock && !controller.signal.aborted) await new Promise<void>(resolve => { release = resolve })
-    }) }).catch(cause => { if (generation.current === version) { setStatus('error'); setError(cause.message) } })
+    }
+    if (!userId && !navigator.locks) void load(false)
+    else lockQueue.current = lockQueue.current.catch(() => {}).then(async () => { await (userId ? hold(true) : navigator.locks.request('papertrail:' + key, { ifAvailable:true }, hold)) }).catch(cause => { if (generation.current === version) { setStatus('error'); setError(cause.message) } })
     return () => { controller.abort(); void localQueue.current.catch(() => {}).finally(() => release?.()); ownsLock.current = false; if (generation.current === version) generation.current++ }
   }, [key, userId, sessionReady])
   useEffect(() => {
@@ -64,6 +68,10 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
     window.addEventListener('online', online); window.addEventListener('offline', offline)
     return () => { clearInterval(timer); window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
   }, [])
+  useEffect(() => {
+    if (!userId || !writable || !apiUrl) return
+    return listenRemoteChanges(() => setRetry(value => value + 1))
+  }, [userId, writable])
   useEffect(() => {
     const protectUnsaved = (event: BeforeUnloadEvent) => { if (savingLocal.current) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('beforeunload', protectUnsaved)
@@ -96,7 +104,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
         if (!userId || !apiUrl) { setStatus('local'); return }
         setStatus('saving'); setError('')
         const signal = loadController.current?.signal
-        await navigator.locks.request('papertrail:papertrail-notes', { ifAvailable:true }, async guestLock => {
+        await navigator.locks?.request('papertrail:papertrail-notes', { ifAvailable:true }, async guestLock => {
           if (!guestLock || !signal || signal.aborted || generation.current !== version) return
           const guest = await loadBook('papertrail-notes',signal)
           if (!guest.notes.length || signal.aborted || generation.current !== version) return

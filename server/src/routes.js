@@ -39,7 +39,10 @@ const fromNote = (row) => ({
   updated_at: toIso(row.updated_at),
 })
 
-export function registerRoutes(router, { pool, auth }) {
+export function registerRoutes(router, { pool, auth, notify }) {
+  // L'onglet à l'origine de l'écriture (X-Socket-Id) n'a pas besoin d'être prévenu.
+  const changed = (req, user) => notify(user.id, req.headers['x-socket-id'])
+
   router.get('/notes', async ({ req, query }) => {
     const user = await auth.requireUser(req)
     const offset = Math.max(0, Number.parseInt(query.get('offset') || '0', 10) || 0)
@@ -64,6 +67,7 @@ export function registerRoutes(router, { pool, auth }) {
       if (error?.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Cette note existe déjà.', 'conflict')
       throw error
     }
+    changed(req, user)
     return { status: 201, body: { revision: 1 } }
   })
 
@@ -80,6 +84,7 @@ export function registerRoutes(router, { pool, auth }) {
       [row.title, row.body, row.color, row.metadata, row.updated, user.id, id, revision],
     )
     if (!result.affectedRows) throw new HttpError(409, 'La note a été modifiée ailleurs.', 'conflict')
+    changed(req, user)
     return { revision: revision + 1 }
   })
 
@@ -87,7 +92,8 @@ export function registerRoutes(router, { pool, auth }) {
     const user = await auth.requireUser(req)
     const revision = Number(query.get('revision'))
     if (!Number.isInteger(revision)) throw badRequest('Paramètre revision invalide.')
-    await pool.execute('DELETE FROM notes WHERE user_id = ? AND id = ? AND revision = ?', [user.id, uuid(params.id), revision])
+    const [result] = await pool.execute('DELETE FROM notes WHERE user_id = ? AND id = ? AND revision = ?', [user.id, uuid(params.id), revision])
+    if (result.affectedRows) changed(req, user)
     return null
   })
 

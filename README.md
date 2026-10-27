@@ -21,7 +21,7 @@ Browser tests use disposable profiles, not the user's browser data. The sync tes
 ## Features and data flow
 
 - A single borderless writing surface; titles derive from the first nonempty line. Creating a note focuses its text.
-- Autosave to IndexedDB, separate guest/account notebooks, recoverable migration from the former localStorage cache. Closing during an unfinished local save is protected by a warning. A browser-wide Web Lock permits one writing tab per notebook; other tabs are read-only and can retry after the writer closes.
+- Autosave to IndexedDB, separate guest/account notebooks, recoverable migration from the former localStorage cache. Closing during an unfinished local save is protected by a warning. Signed-in accounts can be edited from several tabs and devices at once: after each save the API tells the account's other tabs through Socket.io (`/api/socket.io`) and they synchronize. A guest notebook (no account) keeps a browser-wide Web Lock: one writing tab, the others read-only. Offline, tabs of one account share the local cache with last-write-wins.
 - Guest notes transfer to the signed-in account in one cancellable, atomic IndexedDB transaction. Cloud writes debounce for 700 ms. Reconnect and a 30-second refresh retry failed saves. Sign-out first flushes local edits; Retry can recover a failed local write too.
 - Optimistic concurrency uses a server-generated revision and conditional writes. When another device changed a note, both versions remain as distinct notes; a conflict copy is marked. This is not collaborative editing.
 - Trash restores complete notes for 30 days. Expired notes are removed on app loading/refresh and cloud deletion on the next successful synchronization, not by a background server scheduler.
@@ -49,6 +49,7 @@ The browser never talks to the database: it calls the API in `server/` (Node.js 
 - Every query is scoped to the authenticated `user_id`. Notes use a server-side `revision` for optimistic concurrency: a stale write gets `409` and the client keeps both versions.
 - Images: PNG/JPEG/GIF/WebP, 1 MB maximum, private per account.
 - E-mail features (password reset, magic link) appear only when the API has `SMTP_HOST` configured. Links carry a single-use token (1 hour) in the URL fragment.
+- Live sync: Socket.io (WebSocket, authenticated with the session token) only carries a payload-free `notes` ping to the account's other connections; data still flows through the authenticated REST API. The reverse proxy must forward WebSocket upgrades on `/api/socket.io` (Caddy does by default).
 - CORS only allows the origins listed in `ALLOWED_ORIGINS`.
 - Configuration: copy `server/.env.example` to `server/.env`. Deploy on the VPS with `cd server && docker compose up -d --build`; The container serves the static site at `https://papertrail.clubika.com` and the API under `/api` (behind Caddy); the site is built inside the Docker image.
 

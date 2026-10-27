@@ -6,6 +6,8 @@ export type User = { id: string; email: string }
 export type Session = { token: string; user: User }
 export class ApiError extends Error { constructor(message: string, readonly status: number, readonly code?: string) { super(message) } }
 
+// Identifiant Socket.io de cet onglet : le serveur ne le prévient pas de ses propres écritures.
+export const live: { socketId?: string } = {}
 const listeners = new Set<(session: Session | null) => void>()
 export function cachedSession(): Session | null {
   try { const saved = JSON.parse(localStorage.getItem(sessionKey) || 'null'); return typeof saved?.token === 'string' && typeof saved?.user?.email === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(saved?.user?.id) ? saved : null } catch { return null }
@@ -19,7 +21,7 @@ export async function api<T = void>(method: string, path: string, body?: unknown
   if (!apiUrl) throw new ApiError('notConfigured', 0, 'not_configured')
   const token = cachedSession()?.token
   const raw = body instanceof Blob
-  const response = await fetch(apiUrl + path, { method, headers: { ...(body === undefined ? {} : { 'Content-Type': raw ? body.type : 'application/json' }), ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: body === undefined ? undefined : raw ? body : JSON.stringify(body) })
+  const response = await fetch(apiUrl + path, { method, headers: { ...(body === undefined ? {} : { 'Content-Type': raw ? body.type : 'application/json' }), ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(live.socketId ? { 'X-Socket-Id': live.socketId } : {}) }, body: body === undefined ? undefined : raw ? body : JSON.stringify(body) })
   if (!response.ok) {
     const details = await response.json().catch(() => ({}))
     // A revoked or expired session signs this device out; the local notebook stays readable.
