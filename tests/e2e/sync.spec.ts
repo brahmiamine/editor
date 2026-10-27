@@ -162,6 +162,7 @@ test('guest notes and images upload on login, retry conflicts and download on a 
   })
   await page.getByRole('button', { name:'Déconnexion : test@example.invalid' }).click()
   await expect(page.locator('.sync')).toContainText('Sauvegarde impossible')
+  await page.getByRole('button', { name: 'Paramètres du compte' }).click()
   await expect(page.getByRole('button', { name:'Sauvegarder toutes les notes' })).toBeDisabled()
   await expect(page.locator('.note-row')).toHaveCount(0)
   await page.reload()

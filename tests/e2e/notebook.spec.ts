@@ -49,6 +49,7 @@ test('history restoration and full backup/import preserve existing notes', async
   await page.locator('.history-dialog details').first().locator('summary').click()
   await page.getByRole('button', { name: 'Restaurer cette version' }).first().click()
   await expect(editor).toHaveValue('Version originale')
+  await page.getByRole('button', { name: 'Paramètres du compte' }).click()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Sauvegarder toutes les notes' }).click()
   const download = await downloadPromise
