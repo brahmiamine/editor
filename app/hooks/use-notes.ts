@@ -22,6 +22,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
   const savingLocal = useRef(false)
   const [writable, setWritable] = useState(false)
   const ownsLock = useRef(false)
+  const announce = useRef<() => void>(undefined)
   const loadController = useRef<AbortController | null>(null)
   const currentBook = useRef(book); currentBook.current = book
   useEffect(() => {
@@ -70,7 +71,9 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
   }, [])
   useEffect(() => {
     if (!userId || !writable || !apiUrl) return
-    return listenRemoteChanges(() => setRetry(value => value + 1))
+    const remote = listenRemoteChanges(userId, () => setRetry(value => value + 1))
+    announce.current = remote.announce
+    return () => { announce.current = undefined; remote.stop() }
   }, [userId, writable])
   useEffect(() => {
     const protectUnsaved = (event: BeforeUnloadEvent) => { if (savingLocal.current) { event.preventDefault(); event.returnValue = '' } }
@@ -139,6 +142,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
             if (cause instanceof ApiError && cause.status === 409) { setRetry(value => value + 1); return }
             throw cause
           }
+          announce.current?.()
           if (generation.current !== version) return
           setBook(current => ({ ...current, notes: current.notes.map(value => value.id === id ? { ...value, revision: nextRevision } : value), pending: current.pending.filter(value => value !== id || current.notes.find(n => n.id === id)?.updated !== updated) }))
         }
@@ -147,6 +151,7 @@ export function useNotes(userId: string | undefined, sessionReady: boolean) {
             const remoteNote = remote.find(note => note.id === id)
             if (remoteNote?.trashedAt && Date.now() - remoteNote.trashedAt >= 30 * 86400000) {
               await api('DELETE', '/notes/' + id + '?revision=' + remoteNote.revision)
+              announce.current?.()
             }
           }
           setBook(current => ({ ...current, deleted: current.deleted.filter(id => !merged.deleted.includes(id)) }))
